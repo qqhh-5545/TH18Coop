@@ -1,0 +1,70 @@
+{
+  "version": "0.19.0",
+  "dll_sha256": "d4208d6c23dc272f25594ebb6e2324e3d814d1e3fbfa91e12dc2f5971264be35",
+  "status": "native-original-replay-qualified-short-recordings",
+  "network": "TCP exact-input buffered delay; default2; no prediction/rollback",
+  "native_assertions": 1435,
+  "hud_assertions": 22027,
+  "regression_log": "research/replay-final-regression.log",
+  "cases": [
+    {
+      "case": "2p-jp",
+      "source_runner": 18920,
+      "players": 2,
+      "stages": [
+        {
+          "stage": 2,
+          "frames": 1053
+        }
+      ],
+      "playback_native_end_frame": 1053,
+      "replay_bytes": 79665,
+      "replay_sha256": "8f186ccc26f287bd5d258d48cc6b95209445389cd247007176a25bce5b2fd309",
+      "native_replay_list_and_stage_selection": true,
+      "all_player_state_digests": true,
+      "world_digests_every_60_frames": true,
+      "returned_to_original_replay_list": true,
+      "source_exit_codes": 0,
+      "viewer_exit_code": 0,
+      "protected_files_unchanged": 39,
+      "second_stage_fresh_start_fixture": true,
+      "natural_boss_clear": false
+    },
+    {
+      "case": "3p-cn",
+      "source_runner": 26984,
+      "players": 3,
+      "stages": [
+        {
+          "stage": 1,
+          "frames": 1087
+        }
+      ],
+      "playback_native_end_frame": 1087,
+      "replay_bytes": 81188,
+      "replay_sha256": "cfd0f779e1a76c1af8b80072e853bec122b3d547425bd4590b7eb5ca493483c9",
+      "native_replay_list_and_stage_selection": true,
+      "all_player_state_digests": true,
+      "world_digests_every_60_frames": true,
+      "returned_to_original_replay_list": true,
+      "source_exit_codes": 0,
+      "viewer_exit_code": 0,
+      "protected_files_unchanged": 39,
+      "second_stage_fresh_start_fixture": false,
+      "natural_boss_clear": false
+    }
+  ],
+  "verified": [
+    "original native Replay list/stage selector/playback/end/list return/cancel exit",
+    "fresh read-only viewer profile; original progress and configuration unchanged",
+    "native per-seat shot header restored before guest construction; native inventory serialization",
+    "same final DLL used for both source recording and playback; no fixture identity retagging",
+    "windowed F-root tests only; no Steam tests or edits"
+  ],
+  "limits": [
+    "Short real-engine recordings, not a full natural multi-stage clear.",
+    "Second-stage seek validated with a fresh isolated native stage2 start; synthetic live-object jumps are excluded.",
+    "Whole-run EX, every character/card combination, and all cross-stage paths are not exhaustively qualified.",
+    "thcrap launch chain/script-changing patches remain untested."
+  ]
+}

@@ -1,0 +1,4 @@
+https://github.com/Ritosa2333/eagler-touhou
+commit 8ee5ac9570f97cce0edfeeab657da1c9ca41eca7
+Unmodified common NetplayCore and NetplayProtocol. MIT; see LICENSE.
+TH18 adapter and protocol configuration live outside this directory.

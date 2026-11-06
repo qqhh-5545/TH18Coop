@@ -1,0 +1,16 @@
+/release/
+/dist/
+/research/
+/game/
+/.zig-cache/
+/tools/python/
+/tools/uv-cache/
+/tests/bin/
+/coop-data/
+/game-path.txt
+/keybindings.ini
+*.log
+*.dmp
+*.rpy
+*.th18input
+__pycache__/

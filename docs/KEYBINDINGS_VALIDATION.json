@@ -1,0 +1,24 @@
+{
+  "version": "0.20.0",
+  "dll_sha256": "eb3db11808b8dab416282e3c70eab2b5f08139bff3c0238e7e257f4f127fb704",
+  "native_assertions": 1456,
+  "hud_assertions": 22027,
+  "scope": [
+    "default layouts unchanged; native P1/online passthrough by default",
+    "independent localP1/localP2/online key maps and real INI read",
+    "online physical-key -> standard action mask; preserve menu Enter",
+    "duplicate invalid config fallback; removed key disabled; restore original mapping",
+    "complete simulated transport/input/profile/Replay regression"
+  ],
+  "real_game_test": {
+    "mode": "windowed isolated two-seat buffered TCP; default physical-binding profiles; controlled standard inputs",
+    "frames_observed": 1050,
+    "native_exit_codes": [
+      0,
+      0
+    ],
+    "protected_files_unchanged": 32,
+    "progress_commit": false
+  },
+  "base_replay_validation": "docs/REPLAY_VALIDATION.json describes0.19.0 only, not this binary."
+}
