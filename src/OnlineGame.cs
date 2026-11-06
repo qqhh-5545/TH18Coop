@@ -28,8 +28,6 @@ namespace TH18LocalCoop {
         [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr value);
         internal OnlineGame(string entryPath,string root) {
             entry=GameSelection.Validate(entryPath);modRoot=root;engine=Path.Combine(Path.GetDirectoryName(entry),"th18.exe");
-            string expected=String.Equals(Path.GetFileName(entry),"th18c.exe",StringComparison.OrdinalIgnoreCase)?ChineseHash:NetIdentity.CoreHash;
-            if(NetIdentity.Hash(File.ReadAllBytes(entry))!=expected)throw new IOException("游戏启动入口版本不匹配。");
         }
         internal static void RequireNoRunningGame(string gameRoot) {
             string engine=Path.Combine(gameRoot,"th18.exe");
@@ -76,7 +74,7 @@ namespace TH18LocalCoop {
                 }
                 if(game==null)Thread.Sleep(250);
             }
-            if(game==null)throw new IOException("未找到本次在线会话的游戏，请查看日志并退出本次游戏后重试。");
+            if(game==null)throw new IOException("未找到使用本次独立联机档的游戏。Steam 版请先启动 Steam 并登录后重试；不会连接或修改使用单人存档的游戏。详情见日志。");
             Trace("CORE_FOUND pid="+game.Id);game.Exited+=delegate {RecordExit();};game.EnableRaisingEvents=true;
             Loader("--attach "+game.Id);
             Trace("COOP_ATTACHED pid="+game.Id);

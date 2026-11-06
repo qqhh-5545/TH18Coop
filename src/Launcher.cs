@@ -140,7 +140,7 @@ namespace TH18LocalCoop {
 
         public MainForm() {
 
-            Text="虹龙洞联机 1.0.0";
+            Text="虹龙洞联机 1.0.1";
 
             Font=new Font("Microsoft YaHei UI",10);ClientSize=new Size(640,230);
 
@@ -192,7 +192,7 @@ namespace TH18LocalCoop {
 
                     string saved=File.ReadAllText(settings).Trim();string directory=Path.GetDirectoryName(saved);
 
-                    if(Directory.Exists(directory) && !GameSelection.IsSteam(directory)) {
+                    if(Directory.Exists(directory)) {
 
                         path.Text=directory;
 

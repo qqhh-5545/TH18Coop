@@ -8,6 +8,9 @@ namespace TH18LocalCoop {
     internal static class GameSelection {
         internal const string CoreHash="5aeb74b19939a29a8cf06e4fe7777aaf9139e93478507e039f43318171020e9f";
         internal const string ChineseHash="8c1dc7ebf7aab0c8962b2a71cb848d59ef180e1f0613a3c410ca043767044c5b";
+        internal const string SteamCoreHash="9ed66e6952459e81515c17a671410bee7014a83e3c6cc6a7e360e7b4904c62f4";
+        internal static bool SupportedCore(string digest) {return digest==CoreHash || digest==SteamCoreHash;}
+        internal static string CanonicalCore(string digest) {if(!SupportedCore(digest))throw new IOException("游戏核心版本不匹配。");return CoreHash;}
         internal static bool IsSteam(string directory) {
             string full=Path.GetFullPath(directory).TrimEnd('\\','/')+Path.DirectorySeparatorChar;
             return full.IndexOf("\\steamapps\\",StringComparison.OrdinalIgnoreCase)>=0 || File.Exists(Path.Combine(full,"steam_appid.txt")) || File.Exists(Path.Combine(full,"steam_api.dll")) || File.Exists(Path.Combine(full,"steam_api64.dll"));
@@ -17,12 +20,11 @@ namespace TH18LocalCoop {
             if(String.IsNullOrWhiteSpace(entry))throw new IOException("请先选择虹龙洞游戏目录。");
             entry=Path.GetFullPath(entry.Trim());string name=Path.GetFileName(entry),directory=Path.GetDirectoryName(entry);
             if(!String.Equals(name,"th18.exe",StringComparison.OrdinalIgnoreCase) && !String.Equals(name,"th18c.exe",StringComparison.OrdinalIgnoreCase))throw new IOException("请选择 th18.exe 或 th18c.exe。");
-            if(IsSteam(directory))throw new IOException("此扩展不支持 Steam 游戏目录，请选择独立安装的受支持版本。");
             if(entry.Length>=170)throw new IOException("游戏路径过长，请移至较短目录，以便保存联机会话与录像。");
             if(Encoding.Default.GetString(Encoding.Default.GetBytes(directory))!=directory)throw new IOException("原版游戏不能识别此路径的部分字符，请使用当前系统可表示的目录名。");
             string core=Path.Combine(directory,"th18.exe");
-            if(!File.Exists(core) || Digest(core)!=CoreHash)throw new IOException("游戏核心版本不匹配，请选择受支持的虹龙洞目录。");
-            if(!File.Exists(entry) || Digest(entry)!=(String.Equals(name,"th18c.exe",StringComparison.OrdinalIgnoreCase)?ChineseHash:CoreHash))throw new IOException("汉化 / 日文启动入口版本不匹配。");
+            if(!File.Exists(core) || !SupportedCore(Digest(core)))throw new IOException("游戏核心版本不匹配，请选择受支持的虹龙洞目录。");
+            if(!File.Exists(entry) || (String.Equals(name,"th18c.exe",StringComparison.OrdinalIgnoreCase)?Digest(entry)!=ChineseHash:!SupportedCore(Digest(entry))))throw new IOException("汉化 / 日文启动入口版本不匹配。");
             return entry;
         }
     }

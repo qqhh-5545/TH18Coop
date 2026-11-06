@@ -874,6 +874,9 @@ static void test_native_sequential_selection(void) {
     puts("PASS native P1 -> P2 character/card screens, native slot limits, own keyboard, held-confirm guard, cancellation, host presets/resources and replay bypass");
 }
 static void test_local_profile_guard(void) {
+    CHECK(game_target_allowed(L"C:\\Games\\Steam\\steamapps\\common\\th18\\th18.exe"));
+    CHECK(!game_target_allowed(L"C:\\Games\\Steam\\steamapps\\common\\th18\\custom.exe"));
+    CHECK(!data_path_matches("C:\\Users\\User\\AppData\\Roaming\\ShanghaiAlice\\th18",L"C:\\Steam\\steamapps\\common\\th18\\th18.exe"));
     const wchar_t *exe=L"F:\\Game\\th18.exe";
     CHECK(data_path_matches("F:\\Game\\coop-data\\ShanghaiAlice\\th18\\",exe));
     CHECK(data_path_matches("f:\\game\\coop-data\\ShanghaiAlice\\th18",exe));

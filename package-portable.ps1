@@ -1,6 +1,6 @@
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
-$name='TH18Coop-1.0.0-portable'
+$name='TH18Coop-1.0.1-portable'
 $destination=Join-Path $taskRoot ('dist/'+$name)
 New-Item -ItemType Directory -Path $destination -Force | Out-Null
 

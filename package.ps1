@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $taskRoot = $PSScriptRoot
 
-$version = '1.0.0-experimental'
+$version = '1.0.1-experimental'
 
 $dist = Join-Path $taskRoot 'dist'
 

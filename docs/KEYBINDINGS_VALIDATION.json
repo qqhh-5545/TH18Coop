@@ -1,7 +1,7 @@
 {
-  "version": "1.0.0",
-  "dll_sha256": "535b0c08da629d0e73490a5562ce366e9e0fc6c8b782e13c3297f38d7ee3f534",
-  "native_assertions": 1455,
+  "version": "1.0.1",
+  "dll_sha256": "fb14af36c4556d507cff6ab970a58d3760523ddaa5dd006fd910132b1922c2ce",
+  "native_assertions": 1458,
   "hud_assertions": 22027,
   "scope": [
     "local P2 defaults I/K/J/L, shoot G, focus F, Bomb H, active U, cycle O",
@@ -9,9 +9,19 @@
     "independent localP1/localP2/online maps and real INI read",
     "online physical-key to standard action mask; menu Enter preserved",
     "invalid duplicate config falls back; removed key disabled; original mapping restored",
-    "complete simulated transport/input/profile/Replay regression; intentional desync rejected"
+    "complete simulated transport/input/profile/Replay regression; intentional desync rejected",
+    "Steam/standalone allowlist, shared canonical core identity, unknown-core rejection and Steam-path private-profile guards"
   ],
-  "real_game_test": null,
+  "real_game_test": {
+    "mode": "windowed F-root Chinese standalone two-seat buffered TCP; isolated no-commit profiles; controlled standard inputs",
+    "frames_observed": 1048,
+    "native_exit_codes": [
+      0,
+      0
+    ],
+    "protected_files_unchanged": 38,
+    "progress_commit": false
+  },
   "previous_real_game_test": {
     "version": "0.20.0",
     "dll_sha256": "eb3db11808b8dab416282e3c70eab2b5f08139bff3c0238e7e257f4f127fb704",
@@ -24,5 +34,15 @@
     "protected_files_unchanged": 32,
     "progress_commit": false
   },
-  "base_replay_validation": "docs/REPLAY_VALIDATION.json describes0.19.0 only, not this binary."
+  "base_replay_validation": "docs/REPLAY_VALIDATION.json describes0.19.0 only, not this binary.",
+  "steam_compatibility": {
+    "steam_exe_sha256": "9ed66e6952459e81515c17a671410bee7014a83e3c6cc6a7e360e7b4904c62f4",
+    "standalone_exe_sha256": "5aeb74b19939a29a8cf06e4fe7777aaf9139e93478507e039f43318171020e9f",
+    "prior_verified_steam_live_text_matches_standalone": true,
+    "text_bytes": 702410,
+    "text_sha256": "f6959d80062a794fc3ad052c4b34fb83d1cab3f0474d007ac1cd24b92a898808",
+    "steam_runtime_started": false,
+    "steam_files_modified": false,
+    "scope": "Read-only current executable hash/layout verification plus historical normally loaded Steam text. Current runtime tests restricted to standalone."
+  }
 }

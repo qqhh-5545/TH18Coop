@@ -9,13 +9,14 @@
 #include "data_profile.h"
 
 static int profile_matches(const wchar_t *path) {
+    static const BYTE steam_expected[32]={0x9e,0xd6,0x6e,0x69,0x52,0x45,0x9e,0x81,0x51,0x5c,0x17,0xa6,0x71,0x41,0x0b,0xee,0x70,0x14,0xa8,0x3e,0x3c,0x6c,0xc6,0xa7,0xe3,0x60,0xe7,0xb4,0x90,0x4c,0x62,0xf4};
     static const BYTE expected[32]={0x5a,0xeb,0x74,0xb1,0x99,0x39,0xa2,0x9a,0x8c,0xf0,0x6e,0x4f,0xe7,0x77,0x7a,0xaf,0x91,0x39,0xe9,0x34,0x78,0x50,0x7e,0x03,0x9f,0x43,0x31,0x81,0x71,0x02,0x0e,0x9f};
     HCRYPTPROV provider=0;HCRYPTHASH hash=0;BYTE digest[32],buffer[65536];DWORD size=32,n;
     HANDLE file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,NULL,OPEN_EXISTING,0,NULL);
     if(file==INVALID_HANDLE_VALUE) return 0;
     int okay=CryptAcquireContextW(&provider,NULL,NULL,PROV_RSA_AES,CRYPT_VERIFYCONTEXT) && CryptCreateHash(provider,CALG_SHA_256,0,0,&hash);
     while(okay) {if(!ReadFile(file,buffer,sizeof(buffer),&n,NULL)){okay=0;break;}if(!n)break;okay=CryptHashData(hash,buffer,n,0);}
-    if(okay) okay=CryptGetHashParam(hash,HP_HASHVAL,digest,&size,0) && size==32 && !memcmp(digest,expected,32);
+    if(okay) okay=CryptGetHashParam(hash,HP_HASHVAL,digest,&size,0) && size==32 && (!memcmp(digest,expected,32) || !memcmp(digest,steam_expected,32));
     if(hash)CryptDestroyHash(hash);if(provider)CryptReleaseContext(provider,0);CloseHandle(file);return okay;
 }
 
@@ -57,7 +58,7 @@ int wmain(int argc,wchar_t **argv) {
         fwprintf(stderr,L"Target must be a running 32-bit th18.exe.\n");CloseHandle(process);return 1;
     }
     if(GetFileAttributesW(dll)==INVALID_FILE_ATTRIBUTES) {fwprintf(stderr,L"DLL missing: %ls\n",dll);CloseHandle(process);return 1;}
-    if(!game_target_allowed(process_path) || !profile_matches(process_path)) {fwprintf(stderr,L"Unsupported game path or core build; Steam is excluded.\n");CloseHandle(process);return 1;}
+    if(!game_target_allowed(process_path) || !profile_matches(process_path)) {fwprintf(stderr,L"Unsupported game path or core build.\n");CloseHandle(process);return 1;}
     if(!remote_data_matches(process,process_path)) {
         fwprintf(stderr,L"Game is not using the private co-op data directory. Exit and start through the co-op launcher.\n");CloseHandle(process);return 1;
     }

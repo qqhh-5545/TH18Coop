@@ -18,7 +18,7 @@ namespace TH18LocalCoop {
 
     internal sealed class NetIdentity {
 
-        internal const string Version="1.0.0";
+        internal const string Version="1.0.1";
 
         internal const string CoreHash="5aeb74b19939a29a8cf06e4fe7777aaf9139e93478507e039f43318171020e9f";
 
@@ -32,7 +32,7 @@ namespace TH18LocalCoop {
 
         internal static NetIdentity Load(string engine,string root) {
 
-            string core=Hash(File.ReadAllBytes(engine));
+            string core=GameSelection.CanonicalCore(Hash(File.ReadAllBytes(engine)));
 
             if(core!=CoreHash)throw new InvalidOperationException("游戏核心版本不匹配。");
 

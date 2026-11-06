@@ -6,10 +6,6 @@
 static int game_target_allowed(const wchar_t *path) {
     size_t n=wcslen(path);if(n>=170)return 0;
     const wchar_t *slash=wcsrchr(path,L'\\');if(!slash || _wcsicmp(slash+1,L"th18.exe"))return 0;
-    for(const wchar_t *p=path;*p;++p)if(!_wcsnicmp(p,L"\\steamapps\\",11))return 0;
-    wchar_t sibling[MAX_PATH];wcscpy(sibling,path);wchar_t *base=wcsrchr(sibling,L'\\')+1;
-    const wchar_t *names[]={L"steam_appid.txt",L"steam_api.dll",L"steam_api64.dll"};
-    for(unsigned i=0;i<3;++i){wcscpy(base,names[i]);if(GetFileAttributesW(sibling)!=INVALID_FILE_ATTRIBUTES)return 0;}
     return 1;
 }
 static int data_path_matches(const char *actual,const wchar_t *game_exe) {

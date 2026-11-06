@@ -70,6 +70,9 @@ class DataTest {
             if(n==0 || n>=4096)return 2;
             Console.WriteLine(Convert.ToBase64String(bytes,0,(int)n));return 0;
         }
+        Check(GameSelection.CanonicalCore(GameSelection.SteamCoreHash)==GameSelection.CoreHash,"Steam and standalone canonical core identity");
+        Check(!GameSelection.SupportedCore(new string('0',64)),"unknown core still rejected");
+        bool rejected=false;try {GameSelection.CanonicalCore(new string('0',64));}catch(IOException){rejected=true;}Check(rejected,"unknown core cannot use canonical identity");
         string parent=Environment.GetEnvironmentVariable("APPDATA");
         string root=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"新联机档 [fresh]","coop-data");
         string entry=Assembly.GetExecutingAssembly().Location;

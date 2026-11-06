@@ -6,7 +6,7 @@
 
 #include <stddef.h>
 
-#define COOP_VERSION "1.0.0"
+#define COOP_VERSION "1.0.1"
 
 #define COOP_HUD_PLAYERS 3
 

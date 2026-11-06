@@ -3,15 +3,11 @@ param(
     [string]$PackageRoot = $PSScriptRoot
 )
 $ErrorActionPreference = 'Stop'
-$version = '1.0.0'
+$version = '1.0.1'
 $GameExe = (Resolve-Path -LiteralPath $GameExe).Path
 $gameRoot = Split-Path $GameExe -Parent
 if ((Split-Path $GameExe -Leaf) -notin @('th18.exe','th18c.exe')) { throw 'Choose th18.exe or th18c.exe' }
-if (($gameRoot+'\').IndexOf('\steamapps\',[StringComparison]::OrdinalIgnoreCase) -ge 0 -or
-    (Test-Path -LiteralPath (Join-Path $gameRoot 'steam_appid.txt')) -or
-    (Test-Path -LiteralPath (Join-Path $gameRoot 'steam_api.dll')) -or
-    (Test-Path -LiteralPath (Join-Path $gameRoot 'steam_api64.dll'))) { throw 'Steam game directories are excluded.' }
-if ((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $gameRoot 'th18.exe')).Hash.ToLowerInvariant() -ne '5aeb74b19939a29a8cf06e4fe7777aaf9139e93478507e039f43318171020e9f') { throw 'Unsupported game core' }
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $gameRoot 'th18.exe')).Hash.ToLowerInvariant() -notin @('5aeb74b19939a29a8cf06e4fe7777aaf9139e93478507e039f43318171020e9f','9ed66e6952459e81515c17a671410bee7014a83e3c6cc6a7e360e7b4904c62f4')) { throw 'Unsupported game core' }
 if ((Split-Path $GameExe -Leaf) -eq 'th18c.exe' -and (Get-FileHash -Algorithm SHA256 -LiteralPath $GameExe).Hash.ToLowerInvariant() -ne '8c1dc7ebf7aab0c8962b2a71cb848d59ef180e1f0613a3c410ca043767044c5b') { throw 'Unsupported Chinese entry' }
 if (-not (Test-Path -LiteralPath (Join-Path $PackageRoot 'th18_coop.dll'))) {
     $PackageRoot = Join-Path $PSScriptRoot "dist/TH18LocalCoop-$version-experimental"

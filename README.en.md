@@ -6,7 +6,7 @@ A multiplayer mod for **Touhou 18: Unconnected Marketeers**, with two-player loc
 
 ## Getting started
 
-Download the portable ZIP from [Releases](https://github.com/qqhh-5545/TH18Coop/releases), extract the entire folder and run **虹龙洞联机.exe**. Select your game directory in the launcher. You must provide a supported Japanese `th18.exe` or Chinese `th18c.exe` installation. Game files are not included; the Steam version is not supported.
+Download the portable ZIP from [Releases](https://github.com/qqhh-5545/TH18Coop/releases), extract the entire folder and run **虹龙洞联机.exe**. Select your game directory in the launcher. You must provide a supported Japanese `th18.exe` or Chinese `th18c.exe` installation. The verified Steam 1.00a build is also accepted. Start Steam and sign in before launching co-op. The Steam executable and native code layout have been checked; current runtime tests use the standalone installation only. This update did not launch or modify the local Steam game. Game files are not included.
 
 The main buttons are in English. Other launcher settings and help remain in Chinese.
 
@@ -33,7 +33,7 @@ P1 and online controls use the native keyboard/controller configuration until yo
 
 Networking uses **TCP** with host-negotiated input buffering: 1–12 frames, default 2. This is exact-input synchronization, without prediction rollback. A connection waits when network jitter exceeds the buffer.
 
-On a LAN, use the host's LAN address. For a TCP tunnel, forward the tunnel to the host's listening port, default **28180**, and give guests the tunnel hostname and external port. All players need matching game-core, mod and gameplay-configuration versions. Cosmetic preferences and physical key bindings are local.
+On a LAN, use the host's LAN address. For a TCP tunnel, forward the tunnel to the host's listening port, default **28180**, and give guests the tunnel hostname and external port. All players need matching game-core, mod and gameplay-configuration versions. The supported Steam and standalone 1.00a cores share a canonical compatibility identity and can connect to each other. Cosmetic preferences and physical key bindings are local.
 
 ## Gameplay
 
