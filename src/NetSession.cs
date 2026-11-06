@@ -18,7 +18,7 @@ namespace TH18LocalCoop {
 
     internal sealed class NetIdentity {
 
-        internal const string Version="0.20.0";
+        internal const string Version="1.0.0";
 
         internal const string CoreHash="5aeb74b19939a29a8cf06e4fe7777aaf9139e93478507e039f43318171020e9f";
 

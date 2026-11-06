@@ -3,7 +3,7 @@ param(
     [string]$PackageRoot = $PSScriptRoot
 )
 $ErrorActionPreference = 'Stop'
-$version = '0.20.0'
+$version = '1.0.0'
 $GameExe = (Resolve-Path -LiteralPath $GameExe).Path
 $gameRoot = Split-Path $GameExe -Parent
 if ((Split-Path $GameExe -Leaf) -notin @('th18.exe','th18c.exe')) { throw 'Choose th18.exe or th18c.exe' }

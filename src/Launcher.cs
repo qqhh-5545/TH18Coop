@@ -140,9 +140,9 @@ namespace TH18LocalCoop {
 
         public MainForm() {
 
-            Text="虹龙洞联机 0.20.0";
+            Text="虹龙洞联机 1.0.0";
 
-            Font=new Font("Microsoft YaHei UI",10);ClientSize=new Size(640,284);
+            Font=new Font("Microsoft YaHei UI",10);ClientSize=new Size(640,230);
 
             FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;StartPosition=FormStartPosition.CenterScreen;
 
@@ -162,14 +162,14 @@ namespace TH18LocalCoop {
 
                 if(dialog.ShowDialog()==DialogResult.OK){path.Text=dialog.SelectedPath;entryKind.SelectedIndex=0;}}};
 
-            start.Text="本地双人";start.SetBounds(20,132,192,40);
+            start.Text="Local Co-op";start.SetBounds(20,132,192,40);
 
             start.Click+=async delegate {await Run();};
 
-            network.Text="在线联机";network.SetBounds(224,132,192,40);
+            network.Text="Online Co-op";network.SetBounds(224,132,192,40);
 
             network.Click+=delegate {try{ValidateSelection();using(var window=CreateNetworkWindow())window.ShowDialog(this);}catch(Exception error){Note(error.Message);}};
-            replays.Text="录像";replays.SetBounds(428,132,192,40);
+            replays.Text="Replay";replays.SetBounds(428,132,192,40);
             replays.Click+=async delegate {
                 try {
                     string exe=ValidateSelection();start.Enabled=network.Enabled=replays.Enabled=browse.Enabled=entryKind.Enabled=path.Enabled=false;
@@ -181,13 +181,8 @@ namespace TH18LocalCoop {
             help.Click+=delegate {using(var window=new HelpForm(GameDirectory))window.ShowDialog(this);};
 
             var keySettings=new Button {Text="键位",Location=new Point(498,86),Size=new Size(78,30)};keySettings.Click+=delegate {using(var window=new KeyBindingsForm(root))window.ShowDialog(this);};Controls.Add(keySettings);
-            var p1Keys=new Label {Text="默认 P1  方向键移动 · Z 射击 · X Bomb\r\nShift 低速 · C 主动卡 · D 换卡",Location=new Point(20,187),Size=new Size(294,49),Font=new Font(Font.FontFamily,9)};
-
-            var p2Keys=new Label {Text="默认 P2  IJKL 移动 · U 射击 · P Bomb\r\nO 低速 · H 主动卡 · N 换卡",Location=new Point(326,187),Size=new Size(294,49),Font=new Font(Font.FontFamily,9)};
-
-            status.SetBounds(20,244,600,33);status.AutoEllipsis=true;
-
-            Controls.AddRange(new Control[]{fileLabel,path,browse,entryLabel,entryKind,start,network,replays,help,p1Keys,p2Keys,status});
+            status.SetBounds(20,188,600,33);status.AutoEllipsis=true;
+            Controls.AddRange(new Control[]{fileLabel,path,browse,entryLabel,entryKind,start,network,replays,help,status});
 
             var settings=Path.Combine(root,"game-path.txt");
 

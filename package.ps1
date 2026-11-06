@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $taskRoot = $PSScriptRoot
 
-$version = '0.20.0-experimental'
+$version = '1.0.0-experimental'
 
 $dist = Join-Path $taskRoot 'dist'
 
@@ -28,7 +28,7 @@ function Copy-ListedFiles($destination, $paths) {
 
 # Explicit file lists prevent accidentally distributing game data or private dumps.
 
-$common = @('README.md','LICENSE','THIRD_PARTY_NOTICES.md','coop.ini','install.ps1','docs/KEYBINDINGS_VALIDATION.json','docs/REPLAY.md','docs/REPLAY_VALIDATION.json','docs/ROLLBACK.md','docs/DELAY_VALIDATION.json','docs/INPUT_DELAY.md','docs/IMPLEMENTATION.md','docs/VALIDATION.md','docs/CHANGES.md','docs/NETWORK_PLAN.md','docs/CONNECTION_TEST.md','docs/INPUT_PROTOCOL.md','docs/ONLINE_PLAY.md','docs/COOPERATIVE_RULES.md',
+$common = @('README.md','README.en.md','LICENSE','THIRD_PARTY_NOTICES.md','coop.ini','install.ps1','docs/KEYBINDINGS_VALIDATION.json','docs/REPLAY.md','docs/REPLAY_VALIDATION.json','docs/ROLLBACK.md','docs/DELAY_VALIDATION.json','docs/INPUT_DELAY.md','docs/IMPLEMENTATION.md','docs/VALIDATION.md','docs/CHANGES.md','docs/NETWORK_PLAN.md','docs/CONNECTION_TEST.md','docs/INPUT_PROTOCOL.md','docs/ONLINE_PLAY.md','docs/COOPERATIVE_RULES.md',
 
     'licenses/eagler-common-LICENSE.txt','licenses/th07-CC0.txt','licenses/thprac-MIT.txt','licenses/zig-MIT.txt','licenses/mingw-COPYING.txt','licenses/libcxx-LICENSE.txt','licenses/libcxxabi-LICENSE.txt','licenses/libunwind-LICENSE.txt')
 

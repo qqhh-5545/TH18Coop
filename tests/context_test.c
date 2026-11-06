@@ -203,10 +203,10 @@ static void test_stamp_cache(void) {
 }
 static SHORT WINAPI fake_key(int vk) {return vk==pressed_vk?(SHORT)0x8000:0;}
 static void test_keyboard_and_menu(void) {
-    const int keys[]={'I','K','J','L','U','O','P','H','N'};
+    const int keys[]={'I','K','J','L','G','F','H','U','O'};
     const uint32_t masks[]={0x10,0x20,0x40,0x80,1,8,2,0x400,0x800};
     for(unsigned i=0;i<9;++i) {pressed_vk=keys[i];CHECK(read_p2_keys(fake_key)==masks[i]);}
-    for(const char *c="WASDFGRTZXCD";*c;++c) {pressed_vk=*c;CHECK(!read_p2_keys(fake_key));}
+    for(const char *c="WASDPRTZXCN";*c;++c) {pressed_vk=*c;CHECK(!read_p2_keys(fake_key));}
     unsigned original=kb_keys[1][0];kb_keys[1][0]='A';pressed_vk='A';CHECK(read_p2_keys(fake_key)==0x10);pressed_vk='I';CHECK(!read_p2_keys(fake_key));
     pressed_vk=VK_UP;CHECK(kb_sample(0,fake_key)==0x10 && kb_sample(2,fake_key)==0x10);kb_keys[1][0]=original;
     original=kb_keys[2][4];kb_keys[2][4]=VK_SPACE;pressed_vk=VK_SPACE;CHECK(kb_sample(2,fake_key)==1 && !kb_sample(0,fake_key) && !read_p2_keys(fake_key));kb_keys[2][4]=original;

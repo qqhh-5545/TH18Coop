@@ -1,16 +1,20 @@
 {
-  "version": "0.20.0",
-  "dll_sha256": "eb3db11808b8dab416282e3c70eab2b5f08139bff3c0238e7e257f4f127fb704",
-  "native_assertions": 1456,
+  "version": "1.0.0",
+  "dll_sha256": "535b0c08da629d0e73490a5562ce366e9e0fc6c8b782e13c3297f38d7ee3f534",
+  "native_assertions": 1455,
   "hud_assertions": 22027,
   "scope": [
-    "default layouts unchanged; native P1/online passthrough by default",
-    "independent localP1/localP2/online key maps and real INI read",
-    "online physical-key -> standard action mask; preserve menu Enter",
-    "duplicate invalid config fallback; removed key disabled; restore original mapping",
-    "complete simulated transport/input/profile/Replay regression"
+    "local P2 defaults I/K/J/L, shoot G, focus F, Bomb H, active U, cycle O",
+    "native P1/online passthrough by default",
+    "independent localP1/localP2/online maps and real INI read",
+    "online physical-key to standard action mask; menu Enter preserved",
+    "invalid duplicate config falls back; removed key disabled; original mapping restored",
+    "complete simulated transport/input/profile/Replay regression; intentional desync rejected"
   ],
-  "real_game_test": {
+  "real_game_test": null,
+  "previous_real_game_test": {
+    "version": "0.20.0",
+    "dll_sha256": "eb3db11808b8dab416282e3c70eab2b5f08139bff3c0238e7e257f4f127fb704",
     "mode": "windowed isolated two-seat buffered TCP; default physical-binding profiles; controlled standard inputs",
     "frames_observed": 1050,
     "native_exit_codes": [

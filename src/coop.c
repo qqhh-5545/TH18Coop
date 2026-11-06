@@ -251,7 +251,7 @@ static int valid(void *p, SIZE_T n) {
 
 static const struct {int vk;uint32_t mask;} p2_bindings[]={
     {'I',0x10},{'K',0x20},{'J',0x40},{'L',0x80},
-    {'U',1},{'O',8},{'P',2},{'H',0x400},{'N',0x800}};
+    {'G',1},{'F',8},{'H',2},{'U',0x400},{'O',0x800}};
 static uint32_t read_p2_keys(SHORT (WINAPI *read_key)(int)) {
     return kb_sample(1,read_key);
 }

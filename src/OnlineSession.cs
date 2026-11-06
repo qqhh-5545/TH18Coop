@@ -148,7 +148,7 @@ namespace TH18LocalCoop {
                 if(rollback!=null)ownBridge.EnableDelay();
                 lock(gate){stopped.Token.ThrowIfCancellationRequested();bridge=ownBridge;activeRollback=rollback;}
                 try {
-                    note(localDuo && testSharedKeyboard?"共享键盘测试：P1 方向键/Z/X/Shift/C/D；P2 IJKL/U/P/O/H/N。聚焦任一测试游戏窗口即可操作双方。":
+                    note(localDuo && testSharedKeyboard?"共享键盘测试：P1 方向键/Z/X/Shift/C/D；P2 IJKL/G/H/F/U/O。聚焦任一测试游戏窗口即可操作双方。":
                         "已连接，正在启动本次会话游戏。你是 P"+(role+1)+"；使用本机方向键、Z/X/Shift/C/D 操作。");
                     note("本次会话目录："+profile.ProfileDirectory);
                     if(role>0) {

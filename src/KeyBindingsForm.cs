@@ -9,7 +9,7 @@ namespace TH18LocalCoop {
         static readonly string[] Sections={"LocalP1","LocalP2","Online"};
         static readonly string[] Names={"Up","Down","Left","Right","Shoot","Focus","Bomb","Card","Cycle"};
         static readonly string[] Labels={"上","下","左","右","射击 / 确认","低速","Bomb / 返回","使用主动卡","切换主动卡"};
-        static readonly int[][] Defaults={new[]{38,40,37,39,90,16,88,67,68},new[]{73,75,74,76,85,79,80,72,78},new[]{38,40,37,39,90,16,88,67,68}};
+        static readonly int[][] Defaults={new[]{38,40,37,39,90,16,88,67,68},new[]{73,75,74,76,71,70,72,85,79},new[]{38,40,37,39,90,16,88,67,68}};
         readonly int[][] values=new int[3][];
         readonly TextBox[,] boxes=new TextBox[3,9];
         readonly CheckBox[] native=new CheckBox[3];

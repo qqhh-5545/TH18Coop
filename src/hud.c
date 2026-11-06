@@ -225,7 +225,7 @@ static void draw_sidebar(const HudStats *stats) {
     }
     if(stats->shop_owner) {
         rect(157,16,246,17,0xdf173246);snprintf(line,sizeof(line),"P%d SHOP: %s",stats->shop_owner,
-            stats->shop_owner!=stats->local_player+1 && !stats->shared_keyboard?"WAIT FOR TEAMMATE":stats->shared_keyboard && stats->shop_owner==2?"IJKL  U OK  P BACK":"ARROWS  Z OK  X BACK");
+            stats->shop_owner!=stats->local_player+1 && !stats->shared_keyboard?"WAIT FOR TEAMMATE":stats->shared_keyboard && stats->shop_owner==2?"IJKL  G OK  H BACK":"ARROWS  Z OK  X BACK");
         text(162,19,line,0xffffffff,10);
     }
 }
@@ -260,7 +260,7 @@ void coop_menu_hud(int owner) {
     rect(12,8,616,31,0xe0182c40);
     char caption[64];snprintf(caption,sizeof(caption),"P%d  SELECT CHARACTER + STARTING CARDS",owner);
     text(20,11,caption,owner==1?0xffffdc9e:owner==2?0xff8cefff:0xffd0a8ff,11);
-    const char *hint=coop_shared_keyboard() && owner==2?"IJKL MOVE / U OK / P BACK":"ARROWS / Z OK / X BACK";
+    const char *hint=coop_shared_keyboard() && owner==2?"IJKL MOVE / G OK / H BACK":"ARROWS / Z OK / X BACK";
     if(!coop_shared_keyboard() && owner!=coop_view_player()+1)hint="WAIT FOR TEAMMATE";
     text(20,25,hint,0xffffffff,9);
     IDirect3DStateBlock9_Apply(state);IDirect3DStateBlock9_Release(state);

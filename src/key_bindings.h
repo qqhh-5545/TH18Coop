@@ -1,7 +1,7 @@
 #ifndef COOP_KEY_BINDINGS_H
 #define COOP_KEY_BINDINGS_H
 /* Physical bindings are local preferences, never synchronized game rules. */
-static unsigned kb_keys[3][9]={{VK_UP,VK_DOWN,VK_LEFT,VK_RIGHT,'Z',VK_SHIFT,'X','C','D'}, {'I','K','J','L','U','O','P','H','N'}, {VK_UP,VK_DOWN,VK_LEFT,VK_RIGHT,'Z',VK_SHIFT,'X','C','D'}};
+static unsigned kb_keys[3][9]={{VK_UP,VK_DOWN,VK_LEFT,VK_RIGHT,'Z',VK_SHIFT,'X','C','D'}, {'I','K','J','L','G','F','H','U','O'}, {VK_UP,VK_DOWN,VK_LEFT,VK_RIGHT,'Z',VK_SHIFT,'X','C','D'}};
 static int kb_native[3]={1,0,1};
 static uint32_t kb_previous;
 static const uint32_t kb_masks[9]={0x10,0x20,0x40,0x80,1,8,2,0x400,0x800};
