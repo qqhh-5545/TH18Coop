@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 using System.Collections.Generic;
 
@@ -13,6 +13,7 @@ using System.Net.Sockets;
 using System.Threading;
 
 using System.Threading.Tasks;
+using System.Text;
 
 
 
@@ -32,7 +33,7 @@ namespace TH18LocalCoop {
 
         readonly object inbound=new object();readonly int role,players,inputDelay;readonly bool diagnostic;
 
-        volatile bool disposed,remoteEnded;Exception error;
+        volatile bool disposed,remoteEnded,remoteFault;Exception error;
 
         sealed class Delayed {internal int From;internal byte[] Data;internal long Due;}
 
@@ -82,7 +83,7 @@ namespace TH18LocalCoop {
 
         }
 
-        internal void Run(NetworkStream[] streams,Func<bool> exited,CancellationToken cancel,Action<string> note,Action<uint> progress) {
+        internal void Run(Stream[] streams,Func<bool> exited,CancellationToken cancel,Action<string> note,Action<uint> progress,Func<bool> recovering=null,Func<Exception> recoveryFailure=null) {
 
             var locks=new object[streams.Length];for(int i=0;i<locks.Length;++i)locks[i]=new object();
 
@@ -98,6 +99,13 @@ namespace TH18LocalCoop {
 
                     byte[] packet=Exact(streams[socket],length);
 
+                    if(to==role && length>=10 && packet[0]==254){
+                        remoteFault=true;uint frame=BitConverter.ToUInt32(packet,2),code=BitConverter.ToUInt32(packet,6);
+                        string category=packet[1]==1?"desync":"peer";
+                        Interlocked.CompareExchange(ref error,new OnlinePauseException(category,"队友会话已暂停："+Encoding.UTF8.GetString(packet,10,packet.Length-10),frame,code),null);
+                        memory.Write(4,4);continue;
+                    }
+
                     if(to==role && length==1 && packet[0]==255){remoteEnded=true;memory.Write(52,1u);continue;}
 
                     if(to==role){if(testDelay>0 && packet[0]==0){int ordinal=Interlocked.Increment(ref packetOrdinal),delay=Math.Max(0,testDelay+((ordinal%5)-2)*testJitter/2);lock(delayed)delayed.Add(new Delayed {From=from,Data=packet,Due=Stopwatch.GetTimestamp()+delay*Stopwatch.Frequency/1000});}else Deliver(from,packet,exited,cancel);}else if(role==0)Send(streams[to-1],locks[to-1],from,to,packet);else throw new IOException("ROLLBACK_ROUTE");
@@ -108,19 +116,25 @@ namespace TH18LocalCoop {
 
             var report=Stopwatch.StartNew();note(players+(inputDelay>0?" 人延迟同步已连接（缓冲 "+inputDelay+" 帧）；":" 人测试传输已连接；")+"P1 操作主菜单，选人和初始卡牌依席位顺序选择。使用本机正常键位控制自己的角色。");
 
+            bool waiting=false;
             try {while(!disposed && !cancel.IsCancellationRequested) {
 
-                if(error!=null)throw new IOException("ROLLBACK_TRANSPORT",error);
+                if(error!=null)throw error is OnlinePauseException?error:new OnlinePauseException("transport","网络会话无法继续："+error.Message,0,0,error);
+                Exception recoveryError=recoveryFailure==null?null:recoveryFailure();
+                if(recoveryError!=null)throw new OnlinePauseException("transport",recoveryError.Message);
+                bool reconnecting=recovering!=null && recovering();
+                memory.Write(84,reconnecting?1u:0u);
+                if(reconnecting!=waiting){waiting=reconnecting;note(waiting?"网络中断，游戏已暂停；正在等待原玩家重连（最多30秒）……":"连接已恢复，继续原会话。");}
 
                 for(;;){Delayed next=null;lock(delayed){long now=Stopwatch.GetTimestamp();int earliest=-1;for(int i=0;i<delayed.Count;++i)if(delayed[i].Due<=now && (earliest<0 || delayed[i].Due<delayed[earliest].Due))earliest=i;if(earliest>=0){next=delayed[earliest];delayed.RemoveAt(earliest);}}if(next==null)break;Deliver(next.From,next.Data,exited,cancel);}
 
-                if(memory.ReadUInt32(4)==4)throw new IOException("ROLLBACK_NATIVE_STOP "+memory.ReadUInt32(48));
+                if(memory.ReadUInt32(4)==4){uint code=memory.ReadUInt32(48);if(memory.ReadUInt32(80)==1)throw new OnlinePauseException("desync","同步状态校验不一致，首次差异帧 "+memory.ReadUInt32(60)+"。游戏已暂停，详细分组见 coop.log。",memory.ReadUInt32(60),code);throw new OnlinePauseException("native","游戏同步已暂停，代码 "+code,memory.ReadUInt32(28),code);}
 
                 if(exited()){
 
                     if(memory.ReadUInt32(4)!=2)throw new IOException("ROLLBACK_UNCONFIRMED_EXIT");
 
-                    for(int seat=0;seat<players;++seat)if(seat!=role)try{int socket=role==0?seat-1:0;Send(streams[socket],locks[socket],role,seat,new byte[]{255});}catch(IOException){ }catch(ObjectDisposedException){ }
+                    if(!remoteEnded || role==0)for(int seat=0;seat<players;++seat)if(seat!=role)try{int socket=role==0?seat-1:0;Send(streams[socket],locks[socket],role,seat,new byte[]{255});streams[socket].Flush();}catch(IOException){if(!remoteEnded)throw;}catch(ObjectDisposedException){if(!remoteEnded)throw;}
 
                     return;
 
@@ -144,11 +158,28 @@ namespace TH18LocalCoop {
 
             }cancel.ThrowIfCancellationRequested();}
 
+            catch(Exception failure){
+                // Freeze before notifying peers. Never request native process
+                // exit here: only the user's explicit End action may do that.
+                try{memory.Write(4,4);}catch(ObjectDisposedException){}
+                if((!remoteFault || role==0) && !(failure is OperationCanceledException)){
+                    var paused=failure as OnlinePauseException;byte[] reason=Encoding.UTF8.GetBytes(failure.Message.Length>200?failure.Message.Substring(0,200):failure.Message);
+                    byte[] packet=new byte[10+reason.Length];packet[0]=254;packet[1]=(byte)(paused!=null && paused.Category=="desync"?1:2);
+                    Array.Copy(BitConverter.GetBytes(paused==null?0:paused.Frame),0,packet,2,4);Array.Copy(BitConverter.GetBytes(paused==null?0:paused.Code),0,packet,6,4);Array.Copy(reason,0,packet,10,reason.Length);
+                    for(int seat=0;seat<players;++seat)if(seat!=role)try{int socket=role==0?seat-1:0;Send(streams[socket],locks[socket],role,seat,packet);streams[socket].Flush();}catch(IOException){}catch(ObjectDisposedException){}
+                }
+                throw;
+            }
+
             finally {disposed=true;foreach(var stream in streams)try{stream.Close();}catch{ }try{Task.WaitAll(readers.ToArray(),3000);}catch{ }}
 
         }
 
         internal void RequestExit(){try{memory.Write(52,1u);}catch(ObjectDisposedException){}}
+        internal void DesyncForTest(uint frame){
+            if(!diagnostic || Environment.GetEnvironmentVariable("TH18_COOP_ROLLBACK_TEST")!="1")throw new InvalidOperationException("Not an isolated diagnostic");
+            memory.Write(60,frame);memory.Write(80,1u);memory.Write(48,54u);memory.Write(4,4);
+        }
 
         public void Dispose(){disposed=true;memory.Dispose();map.Dispose();}
 

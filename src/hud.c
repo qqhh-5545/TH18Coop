@@ -1,4 +1,4 @@
-﻿#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #define COBJMACROS
 #include <windows.h>
 #include <d3d9.h>

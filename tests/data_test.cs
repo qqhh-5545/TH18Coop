@@ -60,6 +60,7 @@ class DataTest {
     static extern uint NativeEnv(string name,byte[] bytes,uint size);
     static int Main(string[] args) {
         if(args.Length==2 && args[0]=="--check-entry") {try{Console.WriteLine(GameSelection.Validate(args[1]));return 0;}catch(Exception e){Console.WriteLine(e.Message);return 2;}}
+        if(args.Length==2 && args[0]=="--check-launch") {var info=CoopData.StartInfo(args[1],Path.Combine(Path.GetTempPath(),"TH18-readonly-plan"));Console.WriteLine(info.FileName);Console.WriteLine(info.Arguments);Console.WriteLine(info.EnvironmentVariables["APPDATA"]);return 0;}
         try {return Run(args);}
         catch(Exception ex) {Console.Error.WriteLine(ex.GetType().Name+": "+ex.Message);return 10;}
     }
@@ -89,8 +90,35 @@ class DataTest {
         if(CoopData.MatchesNativePath(Encoding.Default.GetBytes(parent+"\\ShanghaiAlice\\th18\0"),root))return 6;
         if(CoopData.MatchesNativePath(Encoding.Default.GetBytes(CoopData.ProfileDirectory(root)+"-other\0"),root))return 7;
         if(CoopData.MatchesNativePath(Encoding.Default.GetBytes(CoopData.ProfileDirectory(root)),root))return 8;
+        Check(CoopData.MatchesNativePath(Encoding.UTF8.GetBytes(CoopData.ProfileDirectory(root)+"\0"),root),"thcrap UTF8 profile with Chinese path");
         if(Directory.Exists(root))return 9; // No save seeding or migration during environment preparation.
         TestSettings();
+        string[] roundtrip={@"C:\path with spaces\",@"quote""and\tail",@"D:\普通汉化\file.js"};
+        string[] decoded=CoopData.WindowsArgs("test "+String.Join(" ",Array.ConvertAll(roundtrip,CoopData.QuoteArg)));
+        for(int i=0;i<roundtrip.Length;++i)Check(decoded[i+1]==roundtrip[i],"Windows argument quoting roundtrip");
+        string fixture=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"steam-launch-"+Guid.NewGuid().ToString("N"));
+        try {
+            Directory.CreateDirectory(Path.Combine(fixture,"config"));
+            string loader=Path.Combine(fixture,"thcrap_loader.exe"),config=Path.Combine(fixture,"config","中文 test.js");
+            File.WriteAllText(loader,"");File.WriteAllText(config,"{}");
+            string option=CoopData.QuoteArg(loader)+" "+CoopData.QuoteArg("中文 test.js")+" %command%";
+            var plan=CoopData.ThcrapInfo(@"C:\fake game\th18.exe",root,option);
+            string[] argv=CoopData.WindowsArgs("test "+plan.Arguments);
+            Check(plan.FileName==loader && plan.WorkingDirectory==fixture && argv.Length==3 && argv[1]==config && argv[2]==@"C:\fake game\th18.exe","thcrap direct plan, config-directory lookup and exact game");
+            Check(plan.EnvironmentVariables["APPDATA"]==root && Environment.GetEnvironmentVariable("APPDATA")==parent,"child-only thcrap profile environment");
+            string steam=Path.Combine(fixture,"Steam"),steamapps=Path.Combine(steam,"steamapps"),fakeGame=Path.Combine(steamapps,"common","th18");
+            Directory.CreateDirectory(fakeGame);string user=Path.Combine(steam,"userdata","42","config");Directory.CreateDirectory(user);
+            File.WriteAllText(Path.Combine(steamapps,"appmanifest_1566410.acf"),"\"AppState\" { \"LastOwner\" \"76561197960265770\" }");
+            string escaped=option.Replace("\\","\\\\").Replace("\"","\\\"");
+            File.WriteAllText(Path.Combine(user,"localconfig.vdf"),"// comment\n\"UserLocalConfigStore\" { \"Software\" { \"Valve\" { \"Steam\" { \"apps\" { \"1566410\" { \"LaunchOptions\" \""+escaped+"\" } } } } } }");
+            Check(CoopData.SteamOptions(Path.Combine(fakeGame,"th18.exe"))==option,"scoped Steam app/owner VDF parsing and escaped paths");
+            bool bad=false;try {CoopData.ThcrapInfo(@"C:\fake game\th18.exe",root,option+" --extra");}catch(IOException){bad=true;}Check(bad,"unrecognized extra launch options rejected");
+            var settings=new ThcrapSettings {Mode="Custom",Loader=loader,Config=config};settings.Save(fixture);
+            var reloaded=ThcrapSettings.Load(fixture);Check(reloaded.Mode=="Custom" && reloaded.Loader==loader && reloaded.Config==config,"machine-local thcrap settings roundtrip");
+            var manual=CoopData.StartInfo(@"C:\fake game\th18.exe",root,fixture);Check(manual.FileName==loader && manual.EnvironmentVariables["APPDATA"]==root,"manual thcrap works without Steam");
+            settings.Mode="Off";settings.Save(fixture);Check(CoopData.StartInfo(@"C:\fake game\th18.exe",root,fixture).FileName==@"C:\fake game\th18.exe","per-launcher thcrap opt-out");
+            Console.WriteLine("PASS thcrap direct launch plan, Windows quoting, inherited profile and unsupported option rejection; no original game launched");
+        } finally {Directory.Delete(fixture,true);}
         string chinese=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"汉化目录 [launch]","th18c.exe");
         var chineseInfo=CoopData.StartInfo(chinese,root);
         Check(chineseInfo.Arguments=="th18.exe" && chineseInfo.WorkingDirectory==Path.GetDirectoryName(chinese),"Chinese direct-launch argument and exact game working directory");

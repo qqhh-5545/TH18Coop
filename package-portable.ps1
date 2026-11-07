@@ -1,12 +1,14 @@
+﻿param([string]$Name='TH18Coop-1.0.4-recovery-test',[string]$ValidationFile='docs/RECOVERY_VALIDATION.json')
 $ErrorActionPreference='Stop'
 $taskRoot=$PSScriptRoot
-$name='TH18Coop-1.0.1-portable'
+$name=$Name
+if($name -notmatch '^TH18Coop-[A-Za-z0-9.-]+$'){throw 'Invalid portable package name'}
 $destination=Join-Path $taskRoot ('dist/'+$name)
 New-Item -ItemType Directory -Path $destination -Force | Out-Null
 
 # Reuse the qualified native build. This export must not silently
 # substitute an unqualified native DLL or include per-machine data.
-$validation=Get-Content -LiteralPath (Join-Path $taskRoot 'docs/KEYBINDINGS_VALIDATION.json') -Raw | ConvertFrom-Json
+$validation=Get-Content -LiteralPath (Join-Path $taskRoot $ValidationFile) -Raw | ConvertFrom-Json
 if((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $taskRoot 'release/th18_coop.dll')).Hash.ToLowerInvariant() -ne $validation.dll_sha256) {
     throw 'Native DLL differs from the qualified key-binding build.'
 }

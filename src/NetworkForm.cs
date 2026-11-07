@@ -56,7 +56,10 @@ namespace TH18LocalCoop {
                 Controls.AddRange(new Control[]{test,inspect,duoButton,sharedTestKeys});
             }
             host.Click+=async delegate {await Connect(true);};join.Click+=async delegate {await Connect(false);};
-            test.Click+=async delegate {await SelfTest();};stop.Click+=delegate {if(session!=null)session.Dispose();if(duo!=null)duo.Dispose();};
+            test.Click+=async delegate {await SelfTest();};stop.Click+=delegate {
+                if(session!=null){bool paused=session.PausedAfterFailure;session.Dispose();if(paused){session=null;Busy(false);Note("本局已结束，请等游戏关闭后重新创建或加入联机。");}}
+                if(duo!=null)duo.Dispose();
+            };
             duoButton.Click+=async delegate {await TestLocalDuo();};
             inspect.Click+=async delegate {
                 using(var dialog=new OpenFileDialog {Title="检查多人原始输入记录",Filter="输入记录|*.th18input",InitialDirectory=Path.Combine(Path.GetDirectoryName(engine),"coop-data","logs")})
@@ -99,6 +102,7 @@ namespace TH18LocalCoop {
             log.AppendText(DateTime.Now.ToString("HH:mm:ss")+"  "+text+Environment.NewLine);
         }
         void Busy(bool value) {
+            stop.Text="断开";
             running=value;host.Enabled=join.Enabled=test.Enabled=inspect.Enabled=duoButton.Enabled=sharedTestKeys.Enabled=!value;stop.Enabled=value;
             address.Enabled=port.Enabled=delay.Enabled=!value;code.ReadOnly=value;
             partySize.Enabled=!value;sharedTestKeys.Enabled=!value && partySize.SelectedIndex==0;
@@ -123,13 +127,16 @@ namespace TH18LocalCoop {
                     await Task.Run(()=>current.Join(ip,number,token,Note));
                 }
             } catch(Exception error) {if(!closing)Note("连接结束："+NetSession.Explain(error));}
-            finally {
-                if(current!=null)current.Dispose();session=null;
+            finally {FinishConnection(current);}
+        }
+        void FinishConnection(OnlineSession current) {
+                bool paused=current!=null && current.PausedAfterFailure && !closing;
+                if(!paused){if(current!=null)current.Dispose();session=null;}
                 if(!closing){
                     if(current!=null && diagnostics)Note("会话统计：同步步数="+current.Completed);
-                    Busy(false);Note("已断开。");
+                    if(paused){Busy(true);stop.Text="结束本局";Note("游戏已暂停。"+(String.IsNullOrEmpty(current.FailureReportPath)?"本次会话已保留。":"诊断文件："+current.FailureReportPath));}
+                    else{Busy(false);Note("已断开。");}
                 }
-            }
         }
         async Task SelfTest() {
             await RunProbe("--online-self-test \""+Path.Combine(root,"TH18Coop.NativeTest.exe")+"\" \""+Path.GetDirectoryName(engine)+"\"","正在用两个网络进程和两个原生模拟进程检查在线开局链路，不打开游戏……");

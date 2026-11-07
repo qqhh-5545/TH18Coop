@@ -20,6 +20,14 @@
 
 typedef int (TC *Tick)(void *);
 static CoopOnlineMap *online_map;
+/* A scene worker can read the same native globals used by guest Draw scopes.
+   Its busy flag clears before the thread finishes, so check both signals. */
+static int scene_construction_pending(void) {
+    if(U32(0x4cd894))return 1;
+    HANDLE worker=(HANDLE)PTR(0x4cd888);
+    return worker && WaitForSingleObject(worker,0)!=WAIT_OBJECT_0;
+}
+
 static int rb_replaying;
 static int rb_control_requested,rb_control_active,rb_control_drawing;
 static int rb_runtime_enabled,rb_runtime_speculating,rb_runtime_virtual,rb_runtime_barrier;
@@ -396,6 +404,7 @@ static int TC guest_cards_tick(void *manager) {
 }
 
 static int TC guest_cards_draw(void *manager) {
+    if(scene_construction_pending())return 1;
     unsigned old=bind_guest(manager,1);
     if(draft_owner==(int)guest_seat+1 && manager==guest_cards) {int r=((Tick)0x408ab0)(manager);guest_slot=old;return r;}
     if(!current_guest || manager!=guest_cards || PTR(0x4cf410)!=p1) {guest_slot=old;return 1;}
@@ -432,6 +441,7 @@ static void hide_card_vm(void *vm,HiddenUiVm *saved,unsigned *count) {
     }
 }
 static int __cdecl scene_draw(void) {
+    if(scene_construction_pending())return 1;
     if(rb_control_active && !rb_control_drawing){if(!rb_graphics_blit()){rb_graphics.failed=1;log_line("RB_CONTROL cached frame blit failed");}return 1;}
     LONG saved_audit_phase=rb_audit.phase;if(rb_audit.enabled)rb_audit.phase=2;
     if(rb_audit.enabled)rb_probe_begin(1,0);
@@ -443,7 +453,10 @@ static int __cdecl scene_draw(void) {
         uint32_t root=FIELD(manager,0x3c);
         if(root)hide_card_vm(((void *(TC *)(void *,uint32_t))0x488b40)(PTR(0x51f65c),root),saved,&count);
     }
+    uint32_t draw_rng[4];int audit_rng=online_map && (online_map->reserved[1]&1) && !U32(0x4cd894);memcpy(draw_rng,(void *)0x4cf280,16);
     int result=((int (__cdecl *)(void))scene_draw_original)();
+    static unsigned draw_rng_changes;
+    if(audit_rng && !U32(0x4cd894) && memcmp(draw_rng,(void *)0x4cf280,16) && draw_rng_changes++<32)log_line("DRAW_RNG_CHANGE stage=%lu step=%lu before=%08lx,%08lx,%08lx,%08lx after=%08lx,%08lx,%08lx,%08lx",(unsigned long)U32(0x4cccdc),(unsigned long)online_map->completed,(unsigned long)draw_rng[0],(unsigned long)draw_rng[1],(unsigned long)draw_rng[2],(unsigned long)draw_rng[3],(unsigned long)U32(0x4cf280),(unsigned long)U32(0x4cf284),(unsigned long)U32(0x4cf288),(unsigned long)U32(0x4cf28c));
     while(portrait_count){--portrait_count;FIELD(portraits[portrait_count].vm,0x5f0)=portraits[portrait_count].x;}
     while(count){--count;void *vm=saved[count].vm;FIELD(vm,0x534)=(FIELD(vm,0x534)&~2u)|(saved[count].flags&2u);}
     if(rb_audit.enabled && rb_probe.serial>=100 && rb_probe.active)rb_probe_end();
@@ -756,13 +769,22 @@ static uint32_t menu_repeat(uint32_t keys) {
 static int TC shop_tick(void *shop) {
     if(!ship(1) || !shop_owner)return ((Tick)shop_tick_original)(shop);
     unsigned old=guest_slot;guest_slot=(unsigned)shop_owner-1;
-    uint32_t saved_menu[8];memcpy(saved_menu,(void *)0x4ca210,sizeof(saved_menu));uint32_t keys=p2_input()&0xf3;
-    U32(0x4ca218)=menu_repeat(keys);U32(0x4ca21c)=keys&~menu_previous;menu_previous=keys;
+    uint32_t saved_menu[8];memcpy(saved_menu,(void *)0x4ca210,sizeof(saved_menu));
+    uint32_t keys=p2_input()&0xf3;
+    uint32_t edge=keys&~menu_previous;menu_previous=keys;
+    /* The native shop only accepts its own menu confirm (0x80000). No guest
+       gameplay key produces that bit, so a guest shop could be opened and then
+       never completed: the session sat on the shop until the transport timed
+       out. Give the second player a confirm on the shoot key's rising edge and
+       mirror it into the held word for this tick only (restored below). */
+    if(edge&1){keys|=0x80000u;edge|=0x80000u;U32(0x4ca210)|=0x80000u;}
+    U32(0x4ca218)=menu_repeat(keys);U32(0x4ca21c)=edge;
     enter_p2(0);int result=((Tick)shop_tick_original)(shop);leave_p2(0);
     memcpy((void *)0x4ca210,saved_menu,sizeof(saved_menu));guest_slot=old;open_pending_shop();return result;
 }
 
 static int TC shop_draw(void *shop) {
+    if(scene_construction_pending())return 1;
     if(!ship(1) || !shop_owner)return ((Tick)shop_draw_original)(shop);
     unsigned old=guest_slot;guest_slot=(unsigned)shop_owner-1;
     enter_p2(0);int result=((Tick)shop_draw_original)(shop);leave_p2(0);guest_slot=old;return result;
@@ -922,6 +944,7 @@ static int TC shared_bomb_tick(void *bomb) {
 }
 
 static int TC shared_bomb_draw(void *bomb) {
+    if(scene_construction_pending())return 1;
     unsigned old=bind_guest(bomb,2);int guest=ship(1) && bomb==guest_bomb;
     if(guest)enter_p2(0);int result=bomb_draw(bomb);if(guest)leave_p2(0);
     guest_slot=old;return result;
@@ -978,6 +1001,7 @@ static int TC host_draw(void *player) {
     return draw_ship(0,p1_draw);
 }
 static int TC guest_draw(void *player) {
+    if(scene_construction_pending())return 1;
     unsigned old=bind_guest(player,0);
     if (!current_guest || player!=current_guest || PTR(0x4cf410)!=p1) {guest_slot=old;return 1;}
     enter_p2(0);

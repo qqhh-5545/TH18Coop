@@ -8,7 +8,8 @@ static int game_target_allowed(const wchar_t *path) {
     const wchar_t *slash=wcsrchr(path,L'\\');if(!slash || _wcsicmp(slash+1,L"th18.exe"))return 0;
     return 1;
 }
-static int data_path_matches(const char *actual,const wchar_t *game_exe) {
+static UINT data_profile_encoding=CP_ACP;
+static int data_path_matches_encoding(const char *actual,const wchar_t *game_exe,UINT encoding) {
     wchar_t expected[MAX_PATH];char encoded[4*MAX_PATH];
     if(wcslen(game_exe)>=MAX_PATH) return 0;
     wcscpy(expected,game_exe);wchar_t *slash=wcsrchr(expected,L'\\');
@@ -16,7 +17,7 @@ static int data_path_matches(const char *actual,const wchar_t *game_exe) {
     const wchar_t *suffix=L"\\coop-data\\ShanghaiAlice\\th18";
     if((size_t)(slash-expected)+wcslen(suffix)>=MAX_PATH) return 0;
     wcscpy(slash,suffix);
-    if(!WideCharToMultiByte(CP_ACP,0,expected,-1,encoded,sizeof(encoded),NULL,NULL)) return 0;
+    if(!WideCharToMultiByte(encoding,0,expected,-1,encoded,sizeof(encoded),NULL,NULL)) return 0;
     size_t len=strlen(encoded),n=0;while(n<4096 && actual[n]) ++n;
     if(n==4096) return 0;
     while(n && (actual[n-1]=='\\' || actual[n-1]=='/')) --n;
@@ -25,12 +26,12 @@ static int data_path_matches(const char *actual,const wchar_t *game_exe) {
     wcscpy(expected,game_exe);slash=wcsrchr(expected,L'\\');
     if((size_t)(slash-expected)+22>=MAX_PATH)return 0;
     wcscpy(slash,L"\\coop-data\\sessions\\");
-    if(!WideCharToMultiByte(CP_ACP,0,expected,-1,encoded,sizeof(encoded),NULL,NULL))return 0;
+    if(!WideCharToMultiByte(encoding,0,expected,-1,encoded,sizeof(encoded),NULL,NULL))return 0;
     len=strlen(encoded);
     int viewer=0;
     if(n<len+32 || _strnicmp(actual,encoded,len)) {
         wcscpy(slash,L"\\coop-data\\replay-sessions\\");
-        if(!WideCharToMultiByte(CP_ACP,0,expected,-1,encoded,sizeof(encoded),NULL,NULL))return 0;
+        if(!WideCharToMultiByte(encoding,0,expected,-1,encoded,sizeof(encoded),NULL,NULL))return 0;
         len=strlen(encoded);viewer=1;
         if(n<len+32 || _strnicmp(actual,encoded,len))return 0;
     }
@@ -42,5 +43,12 @@ static int data_path_matches(const char *actual,const wchar_t *game_exe) {
     size_t left=n-len-32;
     if(viewer){const char *watch="\\viewer\\ShanghaiAlice\\th18";return left==strlen(watch)&&!_strnicmp(tail,watch,left);}
     return (left==strlen(host) && !_strnicmp(tail,host,left)) || (left==strlen(guest) && !_strnicmp(tail,guest,left)) || (left==strlen(third) && !_strnicmp(tail,third,left));
+}
+static int data_path_matches(const char *actual,const wchar_t *game_exe) {
+    UINT first=GetModuleHandleW(L"thcrap.dll")?CP_UTF8:CP_ACP;
+    if(data_path_matches_encoding(actual,game_exe,first)){data_profile_encoding=first;return 1;}
+    UINT second=first==CP_UTF8?CP_ACP:CP_UTF8;
+    if(data_path_matches_encoding(actual,game_exe,second)){data_profile_encoding=second;return 1;}
+    return 0;
 }
 #endif

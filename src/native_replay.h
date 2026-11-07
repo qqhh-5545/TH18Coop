@@ -42,7 +42,7 @@ static uint32_t rp_hash(const void *bytes,size_t length) {
 static void rp_fail(const char *why) {
     if(!rp_invalid)log_line("REPLAY_ERROR %s stage=%d frame=%lu",why,rp_stage,rp_manager?(unsigned long)FIELD(rp_manager,0x20c):0);
     rp_invalid=1;if(rp_active){rp_stop=1;
-        wchar_t path[MAX_PATH];if(MultiByteToWideChar(CP_ACP,0,(char *)0x568c61,-1,path,MAX_PATH) && wcslen(path)+20<MAX_PATH){wcscat(path,L"\\replay-error.txt");HANDLE f=CreateFileW(path,GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);if(f!=INVALID_HANDLE_VALUE){DWORD n;WriteFile(f,why,(DWORD)strlen(why),&n,NULL);CloseHandle(f);}}
+        wchar_t path[MAX_PATH];if(*(char *)0x568c61 && MultiByteToWideChar(data_profile_encoding,0,(char *)0x568c61,-1,path,MAX_PATH) && wcslen(path)+20<MAX_PATH){wcscat(path,L"\\replay-error.txt");HANDLE f=CreateFileW(path,GENERIC_WRITE,FILE_SHARE_READ,NULL,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,NULL);if(f!=INVALID_HANDLE_VALUE){DWORD n;WriteFile(f,why,(DWORD)strlen(why),&n,NULL);CloseHandle(f);}}
     }
 }
 static void rp_clear(void) {
@@ -54,7 +54,7 @@ static int rp_filename(wchar_t *path,const char *name) {
     for(size_t i=0;i<n;++i){char c=name[i];if(!((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='_'||c=='-'||c=='.'))return 0;}
     if(strstr(name,".."))return 0;
     wchar_t profile[MAX_PATH],file[104];
-    if(!MultiByteToWideChar(CP_ACP,0,(char *)0x568c61,-1,profile,MAX_PATH) || !MultiByteToWideChar(CP_ACP,0,name,-1,file,104))return 0;
+    if(!MultiByteToWideChar(data_profile_encoding,0,(char *)0x568c61,-1,profile,MAX_PATH) || !MultiByteToWideChar(data_profile_encoding,0,name,-1,file,104))return 0;
     return swprintf(path,MAX_PATH,L"%ls\\replay\\%ls",profile,file)>0 && wcslen(profile)+wcslen(file)+9<MAX_PATH;
 }
 static void rp_state(uint32_t out[3][22]) {
@@ -122,6 +122,10 @@ static int rp_guest_due(unsigned id) {
     if(!rp_active)return 1;RpStage *stage=rp_current();return stage && FIELD(rp_manager,0x20c)>=stage->header.birth[id];
 }
 static void __cdecl rp_stage_cards(void) {
+    if(rp_viewer && rp_active && rp_manager && FIELD(rp_manager,0xc)==1){
+        unsigned stage=U32(0x4cccdc);
+        if(stage>=RP_STAGES || !FIELD(rp_manager,0xd4+stage*40)){rp_fail("native stage checkpoint missing");return;}
+    }
     ((void (__cdecl *)(void))rp_stage_original)();
     RpStage *stage=rp_current();if(!stage)return;
     /* Native builds the ECL and its enemies immediately after this call,
@@ -266,11 +270,15 @@ static int rp_root_wait(void *scheduler) {
     if(!rp_viewer || FIELD(scheduler,0x54))return 0;
     if(rp_stop)return -1;
     if(rp_active && p1) {
+        if(!online_load_ready())return 1;
         RpStage *stage=rp_current();if(stage)for(unsigned id=1;id<party_count();++id)if(!ship(id)) {
             uint32_t frame=FIELD(rp_manager,0x20c);if(frame+1<stage->header.birth[id])continue;
             guests[id-1].selected_character=stage->header.seats[id].character;
             unsigned old=guest_slot;guest_slot=id-1;int ready=guest_asset_ready(PTR(0x51f65c),stage->header.seats[id].character);guest_slot=old;
             if(!ready){online_assets_ready();((int (TC *)(void *))0x476d20)((void *)0x56ad80);return 1;}
+            /* A carried teammate exists before frame0 in the recording. Create
+               it before the Replay callback, not after frame0 in host_tick. */
+            if(!frame && !stage->header.birth[id]){old=guest_slot;guest_slot=id-1;create_guest();guest_slot=old;if(!ship(id))return 1;}
         }
     }
     return 0;

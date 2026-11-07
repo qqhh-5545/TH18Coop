@@ -16,6 +16,8 @@ The main buttons are in English. Other launcher settings and help remain in Chin
 - **键位** (key bindings): configure local P1, local P2 and your online controls separately. Click a field and press a key. Changes apply when the game is next started. Esc and Enter remain menu controls.
 - **?**: gameplay and data-location help.
 
+After gameplay transport starts, a brief disconnection pauses the game and retries the original seat for up to 30 seconds, replaying unacknowledged input messages. Keep both game and launcher open. Startup failures require a fresh connection. A state mismatch or failed recovery leaves the game paused; use **结束本局** (End session). Each session profile retains `session-error.txt`. Reconnection does not repair divergent game state; checkpoint restoration is not implemented. All players need the same complete package.
+
 ## Default controls
 
 | Action | Local P1 / online | Local P2 |
@@ -72,3 +74,7 @@ Use Windows PowerShell, Zig **0.13.0**, and the .NET Framework C# compiler:
 The automated tests use simulated engine fixtures and loopback networking; they do not automatically launch the original game. Full-length runs, every character/card combination and script-changing patches have not been exhaustively verified.
 
 The project code is MIT-licensed. Bundled components retain their required licenses and attribution in `THIRD_PARTY_NOTICES.md` and `licenses/`. The game and its assets belong to their respective rights holders.
+
+## thcrap
+
+Use the launcher’s **thcrap** button to read this computer’s Steam launch options automatically, disable thcrap, or select a local `thcrap_loader.exe` and patch configuration manually. Manual mode also works with standalone installations. Preferences stay in `thcrap.ini` beside the launcher and are excluded from downloads. Existing Steam/thcrap settings are not changed. The patcher is launched directly with the isolated co-op profile. ACP and UTF-8 private paths are both verified. Full patch combinations still need runtime testing.

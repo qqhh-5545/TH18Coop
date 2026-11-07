@@ -18,7 +18,7 @@ namespace TH18LocalCoop {
 
     internal sealed class NetIdentity {
 
-        internal const string Version="1.0.1";
+        internal const string Version="1.0.4";
 
         internal const string CoreHash="5aeb74b19939a29a8cf06e4fe7777aaf9139e93478507e039f43318171020e9f";
 
@@ -377,6 +377,7 @@ namespace TH18LocalCoop {
             switch(error.Message) {
 
                 case "VERSION":return "双方 mod 版本不同，请使用同一版本。";
+                case "PROTOCOL":case "ONLINE_PROTOCOL":return "联机协议不兼容，请双方使用同一完整安装包。";
 
                 case "CORE":return "双方游戏核心版本不同。";
 

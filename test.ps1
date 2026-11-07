@@ -1,4 +1,4 @@
-param([string]$ZigPath = '')
+﻿param([string]$ZigPath = '')
 $ErrorActionPreference = 'Stop'
 $taskRoot = $PSScriptRoot
 if (-not $ZigPath) { $ZigPath = Join-Path $taskRoot 'tools/python/ziglang/zig.exe' }
@@ -7,7 +7,7 @@ $env:ZIG_GLOBAL_CACHE_DIR = Join-Path $taskRoot '.zig-cache/global'
 $env:ZIG_LOCAL_CACHE_DIR = Join-Path $taskRoot '.zig-cache/local'
 $rollbackCsc=Join-Path $env:WINDIR 'Microsoft.NET/Framework/v4.0.30319/csc.exe'
 New-Item -ItemType Directory -Force -Path (Join-Path $taskRoot 'tests/bin') | Out-Null
-& $rollbackCsc /nologo /target:exe /platform:x86 /optimize+ /r:System.Core.dll ("/out:"+(Join-Path $taskRoot 'tests/bin/rollback_transport_test.exe')) (Join-Path $taskRoot 'tests/rollback_transport_test.cs') (Join-Path $taskRoot 'src/RollbackTransport.cs')
+& $rollbackCsc /nologo /target:exe /platform:x86 /optimize+ /r:System.Core.dll ("/out:"+(Join-Path $taskRoot 'tests/bin/rollback_transport_test.exe')) (Join-Path $taskRoot 'tests/rollback_transport_test.cs') (Join-Path $taskRoot 'src/RollbackTransport.cs') (Join-Path $taskRoot 'src/ReconnectStream.cs') (Join-Path $taskRoot 'src/NetSession.cs') (Join-Path $taskRoot 'src/InputTape.cs') (Join-Path $taskRoot 'src/CoopData.cs') (Join-Path $taskRoot 'src/ThcrapForm.cs')
 if($LASTEXITCODE -ne 0){throw 'Rollback TCP/IPC transport test build failed'}
 & (Join-Path $taskRoot 'tests/bin/rollback_transport_test.exe')
 if($LASTEXITCODE -ne 0){throw 'Rollback TCP/IPC transport test failed'}
@@ -16,6 +16,16 @@ if($LASTEXITCODE -ne 0){throw 'Rollback TCP/IPC transport test failed'}
 if($LASTEXITCODE -ne 0){throw 'Upstream rollback core test build failed'}
 & (Join-Path $taskRoot 'tests/bin/eagler_core_test.exe')
 if($LASTEXITCODE -ne 0){throw 'Upstream rollback core test failed'}
+$reconnectSources=@('tools/reconnect_probe.cs','src/ReconnectStream.cs','src/NetSession.cs','src/InputTape.cs','src/CoopData.cs','src/ThcrapForm.cs') | ForEach-Object { Join-Path $taskRoot $_ }
+& $rollbackCsc /nologo /target:exe /platform:x86 /r:System.Core.dll ("/out:"+(Join-Path $taskRoot 'tests/bin/reconnect_probe.exe')) @reconnectSources
+if($LASTEXITCODE -ne 0){throw 'Reconnect probe build failed'}
+& (Join-Path $taskRoot 'tests/bin/reconnect_probe.exe')
+if($LASTEXITCODE -ne 0){throw 'Reconnect probe failed'}
+$recoveryUiSources=@((Join-Path $taskRoot 'tests/recovery_ui_test.cs'))+@(Get-ChildItem -LiteralPath (Join-Path $taskRoot 'src') -Filter '*.cs' | ForEach-Object { $_.FullName })
+& $rollbackCsc /nologo /target:exe /platform:x86 /main:RecoveryUiProbe /r:System.Core.dll /r:System.Windows.Forms.dll /r:System.Drawing.dll ("/out:"+(Join-Path $taskRoot 'tests/bin/recovery_ui_test.exe')) @recoveryUiSources
+if($LASTEXITCODE -ne 0){throw 'Recovery UI probe build failed'}
+& (Join-Path $taskRoot 'tests/bin/recovery_ui_test.exe')
+if($LASTEXITCODE -ne 0){throw 'Recovery UI probe failed'}
 & $rollbackCsc /nologo /target:exe /platform:x86 /optimize+ ("/out:"+(Join-Path $taskRoot 'tests/bin/rollback_test.exe')) (Join-Path $taskRoot 'src/RollbackTimeline.cs') (Join-Path $taskRoot 'tests/rollback_test.cs')
 if($LASTEXITCODE -ne 0){throw 'Rollback ledger build failed'}
 & (Join-Path $taskRoot 'tests/bin/rollback_test.exe')
@@ -87,12 +97,12 @@ if ($LASTEXITCODE -ne 0) { throw "HUD tests failed ($LASTEXITCODE)" }
 
 $csc = Join-Path $env:WINDIR 'Microsoft.NET/Framework/v4.0.30319/csc.exe'
 $dataExe = Join-Path $testOutput 'data_test.exe'
-& $csc /nologo /target:exe /platform:x86 /optimize+ /utf8output ("/out:"+$dataExe) (Join-Path $taskRoot 'tests/data_test.cs') (Join-Path $taskRoot 'src/CoopData.cs')
+& $csc /nologo /target:exe /platform:x86 /optimize+ /utf8output ("/out:"+$dataExe) (Join-Path $taskRoot 'tests/data_test.cs') (Join-Path $taskRoot 'src/CoopData.cs') (Join-Path $taskRoot 'src/ThcrapForm.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Data isolation test build failed' }
 & $dataExe
 if ($LASTEXITCODE -ne 0) { throw "Data isolation tests failed ($LASTEXITCODE)" }
 $netExe = Join-Path $testOutput 'net_test.exe'
-& $csc /nologo /target:exe /platform:x86 /optimize+ /utf8output /r:System.Core.dll ("/out:"+$netExe) (Join-Path $taskRoot 'tools/net_probe.cs') (Join-Path $taskRoot 'tools/online_probe.cs') (Join-Path $taskRoot 'src/NetSession.cs') (Join-Path $taskRoot 'src/InputTape.cs') (Join-Path $taskRoot 'src/NetworkLog.cs') (Join-Path $taskRoot 'src/OnlineBridge.cs') (Join-Path $taskRoot 'src/OnlineProfile.cs') (Join-Path $taskRoot 'src/OnlineGame.cs') (Join-Path $taskRoot 'src/OnlineSession.cs') (Join-Path $taskRoot 'src/RollbackTransport.cs') (Join-Path $taskRoot 'src/LocalDuo.cs') (Join-Path $taskRoot 'src/CoopData.cs')
+& $csc /nologo /target:exe /platform:x86 /optimize+ /utf8output /r:System.Core.dll ("/out:"+$netExe) (Join-Path $taskRoot 'tools/net_probe.cs') (Join-Path $taskRoot 'tools/online_probe.cs') (Join-Path $taskRoot 'src/NetSession.cs') (Join-Path $taskRoot 'src/InputTape.cs') (Join-Path $taskRoot 'src/NetworkLog.cs') (Join-Path $taskRoot 'src/OnlineBridge.cs') (Join-Path $taskRoot 'src/OnlineProfile.cs') (Join-Path $taskRoot 'src/OnlineGame.cs') (Join-Path $taskRoot 'src/OnlineSession.cs') (Join-Path $taskRoot 'src/RollbackTransport.cs') (Join-Path $taskRoot 'src/ReconnectStream.cs') (Join-Path $taskRoot 'src/LocalDuo.cs') (Join-Path $taskRoot 'src/CoopData.cs') (Join-Path $taskRoot 'src/ThcrapForm.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Network test build failed' }
 & $netExe --self-test (Join-Path $testOutput 'input-fixture.th18input')
 if ($LASTEXITCODE -ne 0) { throw "Network tests failed ($LASTEXITCODE)" }

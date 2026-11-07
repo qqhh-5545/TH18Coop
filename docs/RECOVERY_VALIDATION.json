@@ -1,0 +1,20 @@
+{
+  "version": "1.0.4-recovery-test",
+  "wire_protocol": 5,
+  "dll_sha256": "716e130e3da77702a4ea717d08e6f20952ec234b1a36de69672f6cda72d5057a",
+  "launcher_sha256": "5ac43a77b88479fc671aaec823c3ca70258822d5a5d19fca3b40aeee7bdc4d76",
+  "native_assertions": 1506,
+  "hud_assertions": 22027,
+  "reconnect_assertions": 119,
+  "window": [
+    640,
+    480
+  ],
+  "protected_files_unchanged": 38,
+  "steam_runtime_tested": false,
+  "original_desync_resolved": false,
+  "checkpoint_restore_implemented": false,
+  "zip_sha256": "b7f1c2aeec64a4130b76e913830a707e8d576cb1ea983a479c6df209e67c1e77",
+  "portable_files": 16,
+  "runtime_validation": "Standalone Chinese edition, two isolated 640x480 endpoints: reconnect same session, resume simulation, injected state mismatch retains paused processes and diagnostics, explicit End exits both with code0. Three-seat recovery validated using real TCP and simulated native rings, not three game windows."
+}

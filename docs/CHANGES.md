@@ -1,3 +1,12 @@
+# 1.0.4 — Recovery test release
+
+- During active gameplay, retry the original TCP peer for up to30 seconds. Journal unacknowledged packets and suppress duplicates; authenticate the original session/seat.
+- A state mismatch or failed recovery now pauses the game, saves session-error.txt and exposes an explicit End session action. No automatic native exit on these faults.
+- Keep strict state validation. The original intermittent online desync is unresolved; game-state/checkpoint restoration is not implemented.
+- Native test windows now use the verified640x480 display encoding; preserve permanent settings and progress isolation.
+- Includes portable thcrap Auto/Off/Custom selection and current native Replay/scene-loading guards.
+- Protocol5 requires all players to update the complete package. See RECOVERY_VALIDATION.json for measured coverage.
+
 # 1.0.1
 
 - 恢复受校验 Steam 1.00a 支持；移除启动器、原生加载器和安装器对 Steam 目录的排除。

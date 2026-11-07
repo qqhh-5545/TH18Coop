@@ -93,7 +93,7 @@ internal static class OnlineProbe {
             Assert(game.Evidence.Contains("async_loads=2"),"Local duo did not complete both asynchronous scene loads");
             Assert(game.Evidence.Contains("menu_loads=1"),"Local duo did not return through the independent menu loader");
             byte[] copy=File.ReadAllBytes(Path.Combine(game.ProfilePath,"th18.cfg"));
-            Assert(copy[0x47]==9 && (copy[0x51]&1)==0,"Session was not configured as 640x480 without startup prompt");
+            Assert(copy[0x47]==3 && (copy[0x51]&1)==0,"Session was not configured as 640x480 without startup prompt");
         }
         Assert(Regex.Match(games[0].Evidence,@"state=(\d+)").Value==Regex.Match(games[1].Evidence,@"state=(\d+)").Value,"Local duo final states differ");
         if(players==3) {

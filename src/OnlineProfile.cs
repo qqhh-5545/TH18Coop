@@ -68,8 +68,9 @@ namespace TH18LocalCoop {
             if(!File.Exists(path))throw new IOException("请先用游戏目录中的 custom.exe 保存一次配置，再运行本机双端测试。");
             byte[] settings=File.ReadAllBytes(path);
             if(settings.Length!=136 || BitConverter.ToUInt32(settings,0)!=0x180002)throw new IOException("本机测试配置格式不匹配，未改动原配置。");
-            // Verified custom.exe display list: index 9 is Window 640x480.
-            settings[0x47]=9;
+            // custom.exe 0x4012a5: checked control 0xd8 (Window 640x480)
+            // stores 3 at config+0x47. Resource-list order is not the encoding.
+            settings[0x47]=3;
             // custom.exe checkbox 0xca: ask for a display mode at each startup.
             settings[0x51]=(byte)(settings[0x51]&~1);
             File.WriteAllBytes(path,settings);

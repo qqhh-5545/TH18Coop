@@ -28,11 +28,14 @@ namespace TH18LocalCoop {
                 if(ended.IsFaulted)failure=ended.Exception.GetBaseException();
                 else normalEnd=true;
             } catch(Exception error){failure=error;}
-            Dispose();
+            if(failure==null || !PausedAfterFailure)Dispose();
             try {await Task.WhenAll(tasks);}catch {if(!normalEnd && failure==null)foreach(var task in tasks)if(task.IsFaulted){failure=task.Exception.GetBaseException();break;}}
             if(failure!=null)throw failure;
             note(realGames?"本机 "+sessions.Length+" 端测试已结束，长期进度未提交。请退出仍打开的测试游戏窗口。":"本机 "+sessions.Length+" 端模拟检查结束，未启动真实游戏。");
         }
         public void Dispose(){foreach(var session in sessions)session.Dispose();}
+        internal bool PausedAfterFailure {get{foreach(var session in sessions)if(session.PausedAfterFailure)return true;return false;}}
+        internal void InterruptForTest(int seat){sessions[seat].InterruptForTest(0);}
+        internal void DesyncForTest(int seat,uint frame){sessions[seat].DesyncForTest(frame);}
     }
 }

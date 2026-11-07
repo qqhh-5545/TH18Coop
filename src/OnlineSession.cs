@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
@@ -18,6 +18,10 @@ namespace TH18LocalCoop {
         readonly CancellationTokenSource stopped=new CancellationTokenSource();
         TcpListener listener;TcpClient connection;OnlineBridge bridge;RollbackTransport activeRollback;
         readonly List<TcpClient> clients=new List<TcpClient>();
+        IPAddress resumeHost;int resumePort;string[] resumeKeys;SessionReconnect reconnect;
+        volatile bool pausedAfterFailure;
+        internal bool PausedAfterFailure {get{return pausedAfterFailure;}}
+        internal string FailureReportPath {get;private set;}
         internal uint Completed {get;private set;}
         internal OnlineSession(string gameEntry,string root,Func<int,IOnlineGame> factory=null,NetIdentity testIdentity=null,string testAppData=null,bool localTest=false,bool sharedKeyboard=false,int players=2,int delayFrames=2) {
             if(players<2 || players>3 || (players==3 && localTest && sharedKeyboard))throw new ArgumentException("ONLINE_ROSTER");
@@ -51,7 +55,7 @@ namespace TH18LocalCoop {
                     var stream=client.GetStream();
                     try {
                         string[] hello=NetWire.Read(stream).Split('|');
-                        if(hello.Length!=7 || hello[0]!="ONLINE" || hello[1]!=(useBuffered?"4":"2"))throw new IOException("ONLINE_PROTOCOL");
+                        if(hello.Length!=7 || hello[0]!="ONLINE" || hello[1]!=(useBuffered?"5":"2"))throw new IOException("ONLINE_PROTOCOL");
                         if(!String.Equals(code,hello[6],StringComparison.OrdinalIgnoreCase))throw new IOException("CODE");
                         string mismatch=identity.Difference(NetIdentity.Decode(String.Join("|",hello,2,4)));
                         if(mismatch!=null)throw new IOException(mismatch);
@@ -68,23 +72,26 @@ namespace TH18LocalCoop {
             string session=Guid.NewGuid().ToString("N");uint seed;
             using(var rng=RandomNumberGenerator.Create()){byte[] random=new byte[4];rng.GetBytes(random);seed=BitConverter.ToUInt32(random,0);}
             byte[] score=OnlineProfile.Snapshot(gameRoot);
+            resumeKeys=new string[peers.Count];
             for(int i=0;i<peers.Count;++i) {
                 NetWire.Send(peers[i],"ONLINE_OK|"+identity.Encode()+"|"+session+"|"+seed+(useBuffered?"|"+inputDelay:""));
                 WriteScore(peers[i],score);
                 if(NetWire.Read(peers[i])!="SCORE_OK|"+NetIdentity.Hash(score))throw new IOException("ONLINE_SCORE");
+                if(useBuffered){resumeKeys[i]=Guid.NewGuid().ToString("N");NetWire.Send(peers[i],"RESUME_KEY|"+resumeKeys[i]);}
             }
             RunConnected(peers.ToArray(),0,playerCount,session,seed,score,note,inputDelay);
         }
         internal void Join(string address,int port,string code,Action<string> note) {
             if(!NetSession.ValidCode(code))throw new IOException("CODE");
             IPAddress ip=ResolveHost(address,stopped.Token);
+            resumeHost=ip;resumePort=port;
             var client=new TcpClient(AddressFamily.InterNetwork);Own(client);
             using(client) {
                 var pending=client.BeginConnect(ip,port,null,null);
                 using(pending.AsyncWaitHandle) {
                     if(!pending.AsyncWaitHandle.WaitOne(5000))throw new IOException("连接主机超时。");client.EndConnect(pending);
                 }
-                var stream=client.GetStream();NetWire.Send(stream,"ONLINE|"+(useBuffered?"4":"2")+"|"+identity.Encode()+"|"+code.ToUpperInvariant());
+                var stream=client.GetStream();NetWire.Send(stream,"ONLINE|"+(useBuffered?"5":"2")+"|"+identity.Encode()+"|"+code.ToUpperInvariant());
                 string lobby=NetWire.Read(stream);if(lobby.StartsWith("ERROR|"))throw new IOException(lobby.Substring(6));
                 string[] allocation=lobby.Split('|');int role,count;
                 if(allocation.Length!=3 || allocation[0]!="LOBBY" || !Int32.TryParse(allocation[1],out role) || !Int32.TryParse(allocation[2],out count) || count<2 || count>3 || role<1 || role>=count)throw new IOException("ONLINE_ROSTER");
@@ -95,6 +102,7 @@ namespace TH18LocalCoop {
                 string difference=identity.Difference(NetIdentity.Decode(String.Join("|",hello,1,4)));
                 if(difference!=null)throw new IOException(difference);
                 byte[] score=ReadScore(stream);NetWire.Send(stream,"SCORE_OK|"+NetIdentity.Hash(score));
+                if(useBuffered){string key=NetWire.Read(stream);if(!key.StartsWith("RESUME_KEY|") || key.Length!=43)throw new IOException("ONLINE_RESUME_KEY");resumeKeys=new[]{key.Substring(11)};}
                 int delay=inputDelay;
                 if(useBuffered && (!Int32.TryParse(hello[7],out delay) || delay<1 || delay>12))throw new IOException("ONLINE_DELAY");
                 RunConnected(new[]{stream},role,count,hello[5],seed,score,note,delay);
@@ -142,9 +150,10 @@ namespace TH18LocalCoop {
             // Only the explicit one-click test opts into shared-keyboard mode.
             bool localDuo=localTest;
             if(localDuo)profile.UseLocalTestWindow();
-            IOnlineGame game=gameFactory(role);bool saveAllowed=false;
+            IOnlineGame game=gameFactory(role);bool saveAllowed=false,transportStarted=false;
             using(var ownBridge=new OnlineBridge(role,seed,localDuo,testSharedKeyboard,count)) {
-            using(var rollback=useBuffered?new RollbackTransport(ownBridge.Token,role,count,session,localTest,delay):null) {
+            var rollback=useBuffered?new RollbackTransport(ownBridge.Token,role,count,session,localTest,delay):null;
+            try {
                 if(rollback!=null)ownBridge.EnableDelay();
                 lock(gate){stopped.Token.ThrowIfCancellationRequested();bridge=ownBridge;activeRollback=rollback;}
                 try {
@@ -202,7 +211,15 @@ namespace TH18LocalCoop {
                         }
                         ownBridge.Respond(reply,()=>game.Exited,stopped.Token);
                         if(kind==2){++expected;Completed=expected;kind=1;}else kind=2;
-                        if(expected==1 && kind==1 && rollback!=null){rollback.Run(streams,()=>game.Exited,stopped.Token,note,value=>Completed=value);saveAllowed=true;break;}
+                        if(expected==1 && kind==1 && rollback!=null){
+                            transportStarted=true;
+                            using(var recovery=new SessionReconnect(streams,listener,resumeHost,resumePort,role,session,identity,resumeKeys,note)){
+                                lock(gate)reconnect=recovery;
+                                try{rollback.Run(recovery.Streams,()=>game.Exited,stopped.Token,note,value=>Completed=value,()=>recovery.Recovering,()=>recovery.Failure);}
+                                finally{lock(gate)reconnect=null;}
+                            }
+                            saveAllowed=true;break;
+                        }
                         if(expected==1 && kind==1) {
                             note(count+" 人已进入同步。P1 操作主菜单，选人时依席位顺序操作，之后各自控制角色。");
                             pace.Restart();paceStep=expected;
@@ -214,15 +231,22 @@ namespace TH18LocalCoop {
                         }
                     }
                 } catch(Exception error) {
-                    if(rollback!=null && !localTest)rollback.RequestExit();
+                    pausedAfterFailure=rollback!=null && !stopped.IsCancellationRequested && !(error is OperationCanceledException);
                     ownBridge.Fail(10);
-                    if(rollback==null)Broadcast(streams,"ABORT|"+(error.Message.StartsWith("ONLINE_")?error.Message:"ONLINE_CONNECTION"));
-                    note("在线会话中止："+error.Message+(rollback!=null && !localTest?"。本次游戏正在退出；会话文件已保留。":"。游戏保持暂停，请退出后重连；会话文件已保留。"));throw;
+                    if(!transportStarted)Broadcast(streams,"ABORT|"+(error.Message.StartsWith("ONLINE_")?error.Message:"ONLINE_CONNECTION"));
+                    foreach(var stream in streams)try{stream.Close();}catch(IOException){}
+                    if(pausedAfterFailure){
+                        try {string report=Path.Combine(profile.ProfileDirectory,"session-error.txt");File.WriteAllLines(report,new[]{DateTimeOffset.Now.ToString("o"),"role=P"+(role+1),"completed="+Completed,"build="+identity.Build,"core="+identity.Core,"mod="+identity.Mod,"rules="+identity.Rules,"profile="+profile.ProfileDirectory,"error="+error.ToString()},new System.Text.UTF8Encoding(false));FailureReportPath=report;}
+                        catch(IOException reportError){note("诊断保存失败："+reportError.Message);}
+                        catch(UnauthorizedAccessException reportError){note("诊断保存失败："+reportError.Message);}
+                    }
+                    note("在线会话中止："+error.Message+(pausedAfterFailure?"。游戏保持暂停，诊断及本次会话已保留。请在启动器点击“结束本局”后重新开局。":"。会话文件已保留。"));throw;
                 } finally {
-                    lock(gate){if(rollback!=null && !saveAllowed && !localTest)rollback.RequestExit();ownBridge.Fail(9);bridge=null;activeRollback=null;}
+                    lock(gate){ownBridge.Fail(9);bridge=null;if(!pausedAfterFailure)activeRollback=null;}
                     game.Finish(!localTest && saveAllowed && Completed>0,profile,note);
                 }
             }
+            finally{if(rollback!=null && !pausedAfterFailure)rollback.Dispose();}
             }
         }
         static void Broadcast(NetworkStream[] streams,string message) {
@@ -232,8 +256,11 @@ namespace TH18LocalCoop {
         public void Dispose() {
             lock(gate) {
                 if(activeRollback!=null)activeRollback.RequestExit();stopped.Cancel();if(bridge!=null)bridge.Fail(9);
+                if(pausedAfterFailure && activeRollback!=null){activeRollback.Dispose();activeRollback=null;pausedAfterFailure=false;}
                 foreach(var client in clients)client.Close();if(listener!=null)listener.Stop();
             }
         }
+        internal void InterruptForTest(int socket){lock(gate){if(!localTest || reconnect==null)throw new InvalidOperationException("Not an active isolated test");reconnect.InterruptForTest(socket);}}
+        internal void DesyncForTest(uint frame){lock(gate){if(!localTest || activeRollback==null)throw new InvalidOperationException("Not an active isolated test");activeRollback.DesyncForTest(frame);}}
     }
 }

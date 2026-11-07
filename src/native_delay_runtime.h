@@ -8,22 +8,31 @@ static struct {
     DWORD last_packet,last_progress;
     unsigned delay;
     int ready,pending,pending_result;
-    struct {uint32_t frame,digest;} hashes[3][256];
+    struct {uint32_t frame,digest,detail[13];int detailed;} hashes[3][256];
 } dl_live;
 static int dl_enabled(void){return online_map && (online_map->reserved[1]&32u);}
 static void dl_stop(unsigned code,const char *reason){
     rb_pipe->error=code;InterlockedExchange(&rb_pipe->status,4);
     log_line("DELAY stopped frame=%lu error=%u reason=%s",(unsigned long)dl_live.frame,code,reason);online_fail(code);
 }
-static int dl_hash(unsigned seat,uint32_t frame,uint32_t digest){
+static int dl_hash(unsigned seat,uint32_t frame,uint32_t digest,const uint32_t *detail){
     if(frame>dl_live.frame+64 || (dl_live.frame>256 && frame<dl_live.frame-256))return 0;
     unsigned slot=frame%256,own=online_map->role;
     dl_live.hashes[seat][slot].frame=frame;dl_live.hashes[seat][slot].digest=digest;
+    dl_live.hashes[seat][slot].detailed=detail!=NULL;if(detail)memcpy(dl_live.hashes[seat][slot].detail,detail,13*4);
     if(dl_live.hashes[own][slot].frame!=frame)return 1;
     for(unsigned id=0;id<party_count();++id)
         if(dl_live.hashes[id][slot].frame==frame && dl_live.hashes[id][slot].digest!=dl_live.hashes[own][slot].digest){
             log_line("DELAY digest mismatch frame=%lu P%u=%08lx P%u=%08lx",(unsigned long)frame,own+1,
-                (unsigned long)dl_live.hashes[own][slot].digest,id+1,(unsigned long)dl_live.hashes[id][slot].digest);return 0;
+                (unsigned long)dl_live.hashes[own][slot].digest,id+1,(unsigned long)dl_live.hashes[id][slot].digest);
+            if(dl_live.hashes[own][slot].detailed && dl_live.hashes[id][slot].detailed){
+                const uint32_t *a=dl_live.hashes[own][slot].detail,*b=dl_live.hashes[id][slot].detail;
+                const char *names[]={"globals_rng","menu","P1","P2","P3","bullets","enemies","items"};unsigned first=8;
+                for(unsigned i=0;i<8;++i)if(a[i]!=b[i]){first=i;break;}
+                log_line("DELAY_DETAIL frame=%lu first=%s stage=%lu/%lu rng=%08lx,%08lx,%08lx,%08lx/%08lx,%08lx,%08lx,%08lx",(unsigned long)frame,first<8?names[first]:"unknown",(unsigned long)a[8],(unsigned long)b[8],(unsigned long)a[9],(unsigned long)a[10],(unsigned long)a[11],(unsigned long)a[12],(unsigned long)b[9],(unsigned long)b[10],(unsigned long)b[11],(unsigned long)b[12]);
+                for(unsigned i=0;i<8;++i)log_line("DELAY_GROUP frame=%lu %s P%u=%08lx P%u=%08lx",(unsigned long)frame,names[i],own+1,(unsigned long)a[i],id+1,(unsigned long)b[i]);
+            }
+            if(rb_pipe){rb_pipe->padding[1]=frame;rb_pipe->padding2[0]=1;}return 0;
         }
     return 1;
 }
@@ -35,7 +44,7 @@ static int dl_receive(void){
         MemoryBarrier();RbPipePacket *p=&rb_pipe->incoming[read%RB_PIPE_SLOTS];
         if(p->peer>=party_count() || p->peer==online_map->role || !p->size || p->size>RB_PIPE_PAYLOAD)return 0;
         if(p->data[0]==0){if(!ec_receive(dl_live.core,p->peer,p->data+1,p->size-1))return 0;}
-        else if(p->data[0]==1 && p->size==9){uint32_t frame,digest;memcpy(&frame,p->data+1,4);memcpy(&digest,p->data+5,4);if(!dl_hash(p->peer,frame,digest))return 0;}
+        else if(p->data[0]==1 && (p->size==9 || p->size==61)){uint32_t frame,digest,detail[13];memcpy(&frame,p->data+1,4);memcpy(&digest,p->data+5,4);if(p->size==61)memcpy(detail,p->data+9,sizeof(detail));if(!dl_hash(p->peer,frame,digest,p->size==61?detail:NULL))return 0;}
         else return 0;
         InterlockedExchange(&rb_pipe->in_read,(LONG)++read);dl_live.last_progress=GetTickCount();
     }
@@ -58,9 +67,9 @@ static int dl_initialise(void){
 }
 static int dl_finish(int result){
     if(!supply_test_after(dl_live.frame))return 0;
-    uint32_t frame=dl_live.frame,digest=online_digest();unsigned char packet[9];
-    if(!ec_mark(dl_live.core,frame) || !dl_hash(online_map->role,frame,digest))return 0;
-    packet[0]=1;memcpy(packet+1,&frame,4);memcpy(packet+5,&digest,4);
+    uint32_t frame=dl_live.frame,digest=online_digest();unsigned char packet[61];
+    if(!ec_mark(dl_live.core,frame) || !dl_hash(online_map->role,frame,digest,online_digest_detail))return 0;
+    packet[0]=1;memcpy(packet+1,&frame,4);memcpy(packet+5,&digest,4);memcpy(packet+9,online_digest_detail,sizeof(online_digest_detail));
     for(unsigned id=0;id<party_count();++id)if(id!=online_map->role && !rb_pipe_send(id,packet,sizeof(packet)))return 0;
     rb_scenario_after(frame,1);
     ++dl_live.frame;online_step=dl_live.frame+1;online_map->completed=online_step;
@@ -70,6 +79,11 @@ static int dl_finish(int result){
     return 1;
 }
 static int dl_step(void *scheduler){
+    /* A managed transport failure owns this stop. Do not overwrite it with a fake checksum error52. */
+    if(rb_pipe && rb_pipe->status==4)return 1;
+    /* A temporary network interruption retains the input journals and native
+       world. Service an in-flight loader, but admit no new simulation frame. */
+    if(rb_pipe && rb_pipe->padding2[1]){online_load_ready();dl_live.last_progress=GetTickCount();return 1;}
     if(!dl_live.ready && !dl_initialise()){dl_stop(51,"initialisation");return 1;}
     if(!dl_receive()){dl_stop(52,"input or world digest");return 1;}
     if(GetTickCount()-dl_live.last_progress>90000){dl_stop(53,"peer timeout");return 1;}

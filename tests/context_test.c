@@ -877,6 +877,10 @@ static void test_local_profile_guard(void) {
     CHECK(game_target_allowed(L"C:\\Games\\Steam\\steamapps\\common\\th18\\th18.exe"));
     CHECK(!game_target_allowed(L"C:\\Games\\Steam\\steamapps\\common\\th18\\custom.exe"));
     CHECK(!data_path_matches("C:\\Users\\User\\AppData\\Roaming\\ShanghaiAlice\\th18",L"C:\\Steam\\steamapps\\common\\th18\\th18.exe"));
+    char utf8[2048],ansi[2048];const wchar_t *unicode_exe=L"F:\\游戏\\th18.exe",*unicode_profile=L"F:\\游戏\\coop-data\\ShanghaiAlice\\th18";
+    WideCharToMultiByte(CP_UTF8,0,unicode_profile,-1,utf8,sizeof(utf8),NULL,NULL);CHECK(data_path_matches(utf8,unicode_exe) && data_profile_encoding==CP_UTF8);
+    WideCharToMultiByte(CP_ACP,0,unicode_profile,-1,ansi,sizeof(ansi),NULL,NULL);CHECK(data_path_matches(ansi,unicode_exe));
+    strcat(utf8,"-other");CHECK(!data_path_matches(utf8,unicode_exe));
     const wchar_t *exe=L"F:\\Game\\th18.exe";
     CHECK(data_path_matches("F:\\Game\\coop-data\\ShanghaiAlice\\th18\\",exe));
     CHECK(data_path_matches("f:\\game\\coop-data\\ShanghaiAlice\\th18",exe));
@@ -1088,6 +1092,42 @@ static int run_online_fixture(void) {
 #include "trio_test.h"
 #include "native_heap_test.h"
 #include "native_replay_test.h"
+static void test_loader_draw_isolation(void) {
+    uint32_t flag=U32(0x4cd894);void *old=PTR(0x4cd888);unsigned depth=scope_depth;uint32_t funds=U32(0x4ccd34);void *cards=PTR(0x4cf298);
+    HANDLE event=CreateEventW(NULL,TRUE,FALSE,NULL);CHECK(event!=NULL);PTR(0x4cd888)=event;U32(0x4cd894)=1;
+    CHECK(scene_construction_pending());CHECK(scene_draw()==1);
+    CHECK(guest_cards_draw((void *)1)==1 && guest_draw((void *)1)==1 && shared_bomb_draw((void *)1)==1 && shop_draw((void *)1)==1);
+    CHECK(scope_depth==depth && U32(0x4ccd34)==funds && PTR(0x4cf298)==cards);
+    U32(0x4cd894)=0;CHECK(scene_construction_pending());CHECK(scene_draw()==1 && guest_draw((void *)1)==1);
+    CHECK(SetEvent(event));CHECK(!scene_construction_pending());
+    U32(0x4cd894)=1;CHECK(scene_construction_pending());
+    PTR(0x4cd888)=old;U32(0x4cd894)=flag;CloseHandle(event);
+    puts("PASS scene worker blocks native Draw and guest context swaps until busy flag AND worker completion settle");
+}
+static void test_delay_mismatch_details(void) {
+    CoopOnlineMap *saved_map=online_map,map={0};RbPipe *saved_pipe=rb_pipe;void *saved=malloc(sizeof(dl_live));CHECK(saved!=NULL);memcpy(saved,&dl_live,sizeof(dl_live));
+    RbPipe *pipe=calloc(1,sizeof(*pipe));CHECK(pipe!=NULL);online_map=&map;map.players=2;rb_pipe=pipe;
+    memset(&dl_live,0,sizeof(dl_live));dl_live.frame=40100;
+    for(unsigned id=0;id<3;++id)for(unsigned i=0;i<256;++i)dl_live.hashes[id][i].frame=UINT32_MAX;
+    uint32_t a[13]={11,22,33,44,44,55,66,77,4,8,9,10,11},b[13];memcpy(b,a,sizeof(b));b[2]=999;
+    CHECK(dl_hash(0,40097,0x176edead,a));a[8]=99; /* Later scene/current state must not replace the historical frame. */
+    CHECK(dl_live.hashes[0][40097%256].detail[8]==4);
+    CHECK(!dl_hash(1,40097,0xeef8c3dc,b));CHECK(pipe->padding[1]==40097 && pipe->padding2[0]==1);
+    CHECK(dl_live.hashes[0][40097%256].detail[2]==33 && dl_live.hashes[1][40097%256].detail[2]==999);
+    memset(&dl_live,0,sizeof(dl_live));dl_live.frame=40100;pipe->padding2[0]=0;
+    for(unsigned id=0;id<3;++id)for(unsigned i=0;i<256;++i)dl_live.hashes[id][i].frame=UINT32_MAX;
+    pipe->status=4;pipe->error=77;CHECK(dl_step(NULL)==1 && pipe->error==77);pipe->status=1;
+    void *old_menu=PTR(0x4cf43c),*old_worker=PTR(0x4cd888);uint32_t old_busy=U32(0x4cd894);
+    PTR(0x4cf43c)=NULL;PTR(0x4cd888)=NULL;U32(0x4cd894)=0;
+    pipe->padding2[1]=1;uint32_t paused_frame=dl_live.frame;
+    for(unsigned n=0;n<20;++n)CHECK(dl_step(NULL)==1 && dl_live.frame==paused_frame && !dl_live.ready && pipe->status==1);
+    CHECK(!pipe->end_request);pipe->padding2[1]=0;
+    PTR(0x4cf43c)=old_menu;PTR(0x4cd888)=old_worker;U32(0x4cd894)=old_busy;
+    CHECK(dl_hash(1,40097,123,b));CHECK(dl_hash(0,40097,123,b));CHECK(!pipe->padding2[0]);
+    CHECK(dl_hash(0,40098,111,NULL));CHECK(!dl_hash(1,40098,222,NULL)); /* Original strict mismatch check remains. */
+    memcpy(&dl_live,saved,sizeof(dl_live));free(saved);free(pipe);online_map=saved_map;rb_pipe=saved_pipe;
+    puts("PASS exact delayed mismatch frame and saved groups, equal-digest acceptance and unchanged fail-closed validation");
+}
 int main(int argc,char **argv) {
     SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);SetUnhandledExceptionFilter(report_crash);
     setvbuf(stdout,NULL,_IONBF,0);
@@ -1099,6 +1139,8 @@ int main(int argc,char **argv) {
     }
     CHECK(mock==(void *)0x400000);
     if(argc>1 && !strcmp(argv[1],"--online-fixture"))return run_online_fixture();
+    test_loader_draw_isolation();
+    test_delay_mismatch_details();
     test_online_idle_contract();
     test_online_post_fallthrough();
     test_scope_roundtrip();test_item_owner();test_shop_scopes();test_initial_rewards();

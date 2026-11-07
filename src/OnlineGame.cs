@@ -59,7 +59,7 @@ namespace TH18LocalCoop {
         }
         public void Start(OnlineProfile profile,OnlineBridge bridge,CancellationToken cancel) {
             launchLog=new NetworkLog(Path.GetDirectoryName(entry),profile.ReplayOnly?"replay":profile.IsHost?"launch-p1":"launch-p2");
-            var info=CoopData.StartInfo(entry,profile.DataRoot);
+            var info=CoopData.StartInfo(entry,profile.DataRoot,modRoot);
             info.EnvironmentVariables["TH18_COOP_REPLAY_IDENTITY"]=NetIdentity.Load(engine,modRoot).Encode();
             if(bridge!=null)info.EnvironmentVariables["TH18_COOP_ONLINE"]=bridge.Token;
             else {info.EnvironmentVariables.Remove("TH18_COOP_ONLINE");if(!profile.ReplayOnly)throw new IOException("缺少联机连接。");info.EnvironmentVariables["TH18_COOP_REPLAY_VIEWER"]="1";}

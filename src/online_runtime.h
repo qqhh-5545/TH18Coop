@@ -64,7 +64,9 @@ static uint32_t online_hash_word(uint32_t h,uint32_t word) {
 
 #include "native_world_digest.h"
 
+static uint32_t online_digest_detail[13];
 static uint32_t online_digest(void) {
+    memset(online_digest_detail,0,sizeof(online_digest_detail));online_digest_detail[8]=U32(0x4cccdc);memcpy(online_digest_detail+9,(void *)0x4cf280,16);
 
     uint32_t h=2166136261u;
 
@@ -86,6 +88,7 @@ static uint32_t online_digest(void) {
 
     h=online_hash_word(h,draft_owner);h=online_hash_word(h,shop_owner);
 
+    online_digest_detail[0]=h;
     if(online_map)online_map->reserved[6]=h;
 
     void *menu=PTR(0x4cf43c);
@@ -98,6 +101,7 @@ static uint32_t online_digest(void) {
 
     } else h=online_hash_word(h,UINT32_MAX);
 
+    online_digest_detail[1]=h;
     if(online_map)online_map->reserved[7]=h;
 
     for(unsigned id=0;id<party_count();++id) {
@@ -144,11 +148,13 @@ static uint32_t online_digest(void) {
 
         h=online_hash_word(h,partner[id].ghost);h=online_hash_word(h,partner[id].life_taps);h=online_hash_word(h,partner[id].power_taps);
 
+        online_digest_detail[2+id]=h;
         if(online_map)online_map->reserved[8+(id!=0)]=h;
 
     }
 
-    if(rb_runtime_enabled || (online_map && (online_map->reserved[1]&32u))){h=online_hash_bullets(h,PTR(0x4cf2bc));h=online_hash_enemies(h,PTR(0x4cf2d0));h=online_hash_items(h,PTR(0x4cf2ec));}
+    online_digest_detail[4]=h;
+    if(rb_runtime_enabled || (online_map && (online_map->reserved[1]&32u))){h=online_hash_bullets(h,PTR(0x4cf2bc));online_digest_detail[5]=h;h=online_hash_enemies(h,PTR(0x4cf2d0));online_digest_detail[6]=h;h=online_hash_items(h,PTR(0x4cf2ec));online_digest_detail[7]=h;}
 
     return h;
 

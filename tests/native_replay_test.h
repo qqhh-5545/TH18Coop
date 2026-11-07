@@ -1,4 +1,5 @@
-static void __cdecl fake_replay_stage_cards(void) { }
+static unsigned replay_stage_calls;
+static void __cdecl fake_replay_stage_cards(void) { ++replay_stage_calls; }
 static void test_native_replay_format(void) {
     rp_clear();online_map=NULL;rp_viewer=1;rp_players=3;strcpy(rp_identity,"fixture-identity");
     RpStage *s=&rp_stages[2];s->header.count=2;s->capacity=2;s->frames=calloc(2,sizeof(RpFrame));
@@ -15,6 +16,9 @@ static void test_native_replay_format(void) {
     CHECK(guests[0].selected_character==1 && guests[1].selected_character==2);
     CHECK(U32(0x4cf280)==1234 && U32(0x4cf288)==5678);
     CHECK(!rp_guest_due(1));FIELD(manager,0x20c)=1;CHECK(rp_guest_due(1));
+    unsigned calls=replay_stage_calls;uint32_t old_stage=U32(0x4cccdc);U32(0x4cccdc)=4;FIELD(manager,0xc)=1;
+    rp_stage_cards();CHECK(rp_invalid && rp_stop && replay_stage_calls==calls); /* Partial native stage must never be dereferenced. */
+    U32(0x4cccdc)=old_stage;rp_invalid=rp_stop=0;FIELD(manager,0xc)=0;
     free(manager);
     rp_clear();CHECK(!rp_decode(blob,size-1));CHECK(!rp_decode(blob,sizeof(RpHeader)-1));
     RpHeader *head=(RpHeader *)blob;head->players=4;CHECK(!rp_decode(blob,size));head->players=3;

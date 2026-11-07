@@ -140,7 +140,7 @@ namespace TH18LocalCoop {
 
         public MainForm() {
 
-            Text="虹龙洞联机 1.0.1";
+            Text="虹龙洞联机 1.0.4（测试版）";
 
             Font=new Font("Microsoft YaHei UI",10);ClientSize=new Size(640,230);
 
@@ -180,6 +180,7 @@ namespace TH18LocalCoop {
             help.Text="?";help.SetBounds(588,86,32,30);tips.SetToolTip(help,"联机玩法与数据位置");
             help.Click+=delegate {using(var window=new HelpForm(GameDirectory))window.ShowDialog(this);};
 
+            var patchSettings=new Button {Text="thcrap",Location=new Point(402,86),Size=new Size(84,30)};patchSettings.Click+=delegate {using(var window=new ThcrapForm(root))window.ShowDialog(this);};Controls.Add(patchSettings);
             var keySettings=new Button {Text="键位",Location=new Point(498,86),Size=new Size(78,30)};keySettings.Click+=delegate {using(var window=new KeyBindingsForm(root))window.ShowDialog(this);};Controls.Add(keySettings);
             status.SetBounds(20,188,600,33);status.AutoEllipsis=true;
             Controls.AddRange(new Control[]{fileLabel,path,browse,entryLabel,entryKind,start,network,replays,help,status});
@@ -294,9 +295,10 @@ namespace TH18LocalCoop {
 
             start.Enabled=browse.Enabled=network.Enabled=replays.Enabled=entryKind.Enabled=path.Enabled=false;
 
+            NetworkLog launchLog=null;
             try {
 
-                string exe=ValidateSelection();
+                string exe=ValidateSelection();launchLog=new NetworkLog(GameDirectory,"local-launch");launchLog.Write("ENTRY="+exe+" profile="+CoopData.ProfileDirectory(DataRoot));
 
                 Process game=FindGame();
 
@@ -310,14 +312,15 @@ namespace TH18LocalCoop {
 
                     Note("正在启动游戏…");
 
-                    var info=CoopData.StartInfo(exe,DataRoot);info.EnvironmentVariables["TH18_COOP_REPLAY_IDENTITY"]=NetIdentity.Load(Path.Combine(GameDirectory,"th18.exe"),root).Encode();
-                    using(var initial=Process.Start(info)) { }
+                    var info=CoopData.StartInfo(exe,DataRoot,root);info.EnvironmentVariables["TH18_COOP_REPLAY_IDENTITY"]=NetIdentity.Load(Path.Combine(GameDirectory,"th18.exe"),root).Encode();
+                    launchLog.Write("START executable="+info.FileName+" args="+info.Arguments+" cwd="+info.WorkingDirectory+" child_APPDATA="+info.EnvironmentVariables["APPDATA"]);
+                    using(var initial=Process.Start(info)) {launchLog.Write("ENTRY_PID="+initial.Id);}
 
                     for(int i=0;i<160;++i) {await Task.Delay(250);game=FindGame();if(game!=null && Ready(game.Id) && IsIsolated(game.Id))break;if(game!=null){game.Dispose();game=null;}}
 
                 }
 
-                if(game==null)throw new InvalidOperationException("尚未找到使用独立数据目录的游戏，请使用本启动器启动联机。");
+                if(game==null)throw new InvalidOperationException("未找到使用独立联机档的游戏；Steam 或外部补丁可能重新启动了普通游戏。详情见："+launchLog.FilePath);
 
                 int pid;using(game)pid=game.Id;
 
@@ -331,11 +334,11 @@ namespace TH18LocalCoop {
 
                 if(!activated)throw new InvalidOperationException("扩展未就绪，请查看 coop.log 后重启游戏。\r\n"+last);
 
-                Note("已启动。");
+                launchLog.Write("COOP_ACTIVATED pid="+pid);Note("已启动。");
 
-            } catch(Exception ex) {Note(ex.Message);}
+            } catch(Exception ex) {if(launchLog!=null)launchLog.Write("FAIL "+ex);Note(ex.Message);}
 
-            finally {start.Enabled=browse.Enabled=network.Enabled=replays.Enabled=entryKind.Enabled=path.Enabled=true;}
+            finally {if(launchLog!=null)launchLog.Dispose();start.Enabled=browse.Enabled=network.Enabled=replays.Enabled=entryKind.Enabled=path.Enabled=true;}
 
         }
 
