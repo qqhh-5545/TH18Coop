@@ -28,14 +28,14 @@ static void test_native_bomb_prefix(const char *path){
 }
 static void __stdcall fake_focus_delete(uint32_t id){CHECK(id==901);++focus_deleted;}
 static unsigned char portrait_root[0x624],portrait_body[0x624],portrait_dialogue[0x1d8],portrait_gui[0x2c4];
-static uint32_t portrait_link[3];
-static void *TC fake_portrait_lookup(void *manager,uint32_t id){(void)manager;return id==777?portrait_root:NULL;}
-static float *TC fake_portrait_position(void *vm,float *out){
-    out[0]=FLT(vm,0x30)+FLT(vm,0x5f0);out[1]=FLT(vm,0x34);out[2]=0;
-    if(vm==portrait_body)out[0]+=FLT(portrait_root,0x30)+FLT(portrait_root,0x5f0);
-    return out;
+static int TC fake_native_portrait(void *manager,void *vm) {
+    CHECK(manager==(void *)0x1234 && vm==portrait_body);
+    CHECK(FLT(vm,0x5c)==1 && FLT(vm,0x60)==1);
+    CHECK(FLT(vm,0x30)==64 && FLT(vm,0x34)==120 && FLT(vm,0x5f0)==5 && FLT(vm,0x5f4)==10);
+    CHECK(FIELD(vm,0x524)==0xa0123456 && FIELD(vm,0x528)==0x80123456);
+    return 41;
 }
-static int __cdecl fake_portrait_scene(void){CHECK(fabsf(FLT(portrait_root,0x5f0)+129)<.01f);return 41;}
+static int __cdecl fake_portrait_scene(void) {return anm_draw((void *)0x1234,portrait_body);}
 static void test_online_gameplay_fixes(void){
     reset_context();CoopOnlineMap map={0};map.players=3;online_map=&map;
     guests[1].player=calloc(1,0x479d0);CHECK(ship(2));FIELD(ship(2),0x476ac)=1;
@@ -91,17 +91,21 @@ static void test_online_gameplay_fixes(void){
     CHECK(is_dialogue_portrait(portrait_root) && is_dialogue_portrait(portrait_body));
     FIELD(portrait_body,0x524)=FIELD(portrait_body,0x528)=0xff123456;anm_draw_original=fake_vm_draw;vm_alpha=255;draw_alpha[0]=51;
     CHECK(anm_draw((void *)0x1234,portrait_body)==19 && FIELD(portrait_body,0x524)==0xff123456);
-    PTR(0x51f65c)=(void *)0x1234;stub(0x488b40,fake_portrait_lookup);stub(0x4065a0,fake_portrait_position);
-    FLT(portrait_root,0x30)=496;FIELD(portrait_root,0x538)=0x821000;FLT(portrait_body,0x30)=64;
-    FIELD(portrait_body,0x534)=0x1404007;FIELD(portrait_body,0x538)=0x822400;
-    FLT(portrait_body,0x74)=397;FLT(portrait_body,0x78)=720;FLT(portrait_body,0x54)=FLT(portrait_body,0x58)=FLT(portrait_body,0x5c)=FLT(portrait_body,0x60)=1;
-    portrait_link[0]=(uint32_t)(uintptr_t)portrait_body;portrait_link[1]=0;FIELD(portrait_root,0x598)=(uint32_t)(uintptr_t)portrait_link;
-    *(float *)0x56aca0=2;PortraitShift shift[4];unsigned count=fit_dialogue_portraits(shift);CHECK(count==1 && fabsf(FLT(portrait_root,0x5f0)+129)<.01f);
-    FIELD(portrait_root,0x5f0)=shift[0].x;
-    scene_draw_original=fake_portrait_scene;CHECK(scene_draw()==41 && FLT(portrait_root,0x5f0)==0);
+    FLT(portrait_body,0x30)=64;FLT(portrait_body,0x34)=120;
+    FLT(portrait_body,0x5f0)=5;FLT(portrait_body,0x5f4)=10;
+    FLT(portrait_body,0x5c)=FLT(portrait_body,0x60)=1;
+    FIELD(portrait_body,0x524)=0xa0123456;FIELD(portrait_body,0x528)=0x80123456;
+    anm_draw_original=fake_native_portrait;scene_draw_original=fake_portrait_scene;
+    CHECK(scene_draw()==41);
+    hud_draws=hud_captures=0;
+    CHECK(draw_dialogue_hud(p1)==1 && hud_draws==1 && hud_captures==0);
+    CHECK(draw_late_hud(p1)==1 && hud_draws==1 && hud_captures==1);
+    FIELD(portrait_gui,0x1b0)=0;
+    CHECK(draw_dialogue_hud(p1)==1 && hud_draws==1 && hud_captures==1);
+    CHECK(draw_late_hud(p1)==1 && hud_draws==2 && hud_captures==2);
     PTR(0x4cf2e0)=PTR(0x51f65c)=NULL;guests[0].bomb=guests[1].bomb=NULL;PTR(0x4cf2b8)=NULL;
     free(guests[1].player);memset(&guests[1],0,sizeof(guests[1]));online_map=NULL;reset_context();
-    puts("PASS gameplay fixes: mixed card mapping/switching, nearest living 3-seat aim and SSE bridge, native all-seat Bomb reads, short protection, focus cleanup, portrait ownership/fit/restore");
+    puts("PASS gameplay fixes: mixed card mapping/switching, nearest living 3-seat aim and SSE bridge, native all-seat Bomb reads, short protection, focus cleanup, native portrait and dialogue HUD ordering");
 }
 static void test_three_player_rules(void) {
     reset_context();CoopOnlineMap map={0};map.players=3;map.role=2;online_map=&map;

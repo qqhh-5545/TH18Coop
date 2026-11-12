@@ -11,7 +11,9 @@ typedef struct {IDirect3DTexture9 *texture;float u,v,u2,v2,w,h;} Sprite;
 static IDirect3DDevice9 *device;
 static unsigned char *front,*ascii;
 static float scale,origin_x,origin_y;
-static void capture_test_target(void) {
+void coop_hud_capture(void) {
+    IDirect3DDevice9 *device=*(IDirect3DDevice9 **)0x4ccdf8;
+    if(!device)return;
     wchar_t path[MAX_PATH],diagnostic[MAX_PATH+8];if(!coop_hud_capture_path(path,MAX_PATH))return;
     IDirect3DSurface9 *target=NULL,*copy=NULL;D3DSURFACE_DESC desc={0};D3DLOCKED_RECT locked={0};
     HRESULT result=IDirect3DDevice9_GetRenderTarget(device,0,&target);
@@ -266,7 +268,8 @@ void coop_menu_hud(int owner) {
     IDirect3DStateBlock9_Apply(state);IDirect3DStateBlock9_Release(state);
 }
 int __attribute__((thiscall)) coop_hud(void *ignored) {
-    (void)ignored;IDirect3DStateBlock9 *state=begin_hud();if(!state) return 1;
+    (void)ignored;
+    IDirect3DStateBlock9 *state=begin_hud();if(!state) return 1;
     HudStats stats;coop_hud_stats(&stats);draw_players(&stats);draw_sidebar(&stats);
     for(unsigned n=0;n<queued_count;++n) {
         QueuedCard *entry=&queued[n];HudNativeQuad native[24];
@@ -281,5 +284,5 @@ int __attribute__((thiscall)) coop_hud(void *ignored) {
             IDirect3DDevice9_DrawPrimitiveUP(device,D3DPT_TRIANGLELIST,2,vertices,sizeof(Vertex));
         }
     }
-    IDirect3DStateBlock9_Apply(state);IDirect3DStateBlock9_Release(state);capture_test_target();return 1;
+    IDirect3DStateBlock9_Apply(state);IDirect3DStateBlock9_Release(state);return 1;
 }

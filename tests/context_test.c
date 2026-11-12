@@ -17,7 +17,9 @@ static LONG WINAPI report_crash(EXCEPTION_POINTERS *error) {
         (unsigned long)error->ExceptionRecord->ExceptionInformation[1],(unsigned long)error->ContextRecord->Ecx);
     return EXCEPTION_EXECUTE_HANDLER;
 }
-int TC coop_hud(void *unused) {(void)unused;return 1;}
+static unsigned hud_draws,hud_captures;
+int TC coop_hud(void *unused) {(void)unused;++hud_draws;return 1;}
+void coop_hud_capture(void) {++hud_captures;}
 static int menu_banner;
 void coop_menu_hud(int owner) {menu_banner=owner;}
 
@@ -238,7 +240,38 @@ static void fake_revive_reset(void) {
     ++reset_calls;reset_mask|=1u<<id;
     if(expected_revived>=0) CHECK(id==(unsigned)expected_revived);
     CHECK(PTR(0x4cf298)==(id?guest_cards:host_cards));
+    if(partner[id].ghost)CHECK(U32(0x4ccd38)==U32(0x4ccd3c)/2);
     FIELD(ship(id),0x476ac)=1;
+}
+static unsigned option_refreshes;
+static void TC fake_option_refresh(void *position,void *player) {
+    CHECK(position==OFF(player,0x620) && PTR(0x4cf410)==player);
+    ++option_refreshes;
+}
+static void *TC fake_equipment_lookup(void *manager,uint32_t id) {
+    CHECK(manager==(void *)0x1234);
+    return id==14?(void *)0x5678:NULL;
+}
+static void test_missing_equipment_options(void) {
+    reset_context();stub(0x45d5e0,fake_option_refresh);stub(0x488b40,fake_equipment_lookup);
+    unsigned char card[0x5c]={0};FIELD(card,4)=51;FIELD(card,8)=7;
+    FIELD(card,0xc)=(uint32_t)(uintptr_t)card;
+    FIELD(guest_cards,0x1c)=(uint32_t)(uintptr_t)OFF(card,0xc);
+    option_refreshes=0;enter_p2(0);PTR(0x51f65c)=(void *)0x1234;
+    ensure_equipment_options(current_guest);CHECK(option_refreshes==1);
+    for(unsigned i=0;i<2;++i){
+        void *option=OFF(current_guest,0xa30+i*0xf0);
+        FIELD(card,0x54+i*4)=(uint32_t)(uintptr_t)option;
+        FIELD(option,0)=2;FIELD(option,0xd0)=7;FIELD(option,0xb0)=14;
+    }
+    ensure_equipment_options(current_guest);CHECK(option_refreshes==1);
+    FIELD(current_guest,0xa30+0xb0)=15;
+    ensure_equipment_options(current_guest);CHECK(option_refreshes==2);
+    FIELD(current_guest,0x4779c)=2;
+    ensure_equipment_options(current_guest);CHECK(option_refreshes==2);
+    PTR(0x51f65c)=NULL;leave_p2(0);
+    FIELD(guest_cards,0x1c)=0;reset_context();
+    puts("PASS missing equipment animation rebuilt under owning seat; existing VMs and native retract are preserved");
 }
 static void fake_gameover(void) {++gameovers;}
 static unsigned pause_calls,pause_rebuilds;static int expected_pause_phase;
@@ -649,7 +682,13 @@ static void * __stdcall fake_new_node(void *callback) {
     void *node=calloc(1,0x30);CHECK(node!=NULL);FIELD(node,8)=(uint32_t)(uintptr_t)callback;return node;
 }
 static int __stdcall fake_add_tick(void *node,int priority) {(void)node;CHECK(priority==0x16);return 1;}
-static int __stdcall fake_add_draw(void *node,int priority) {(void)node;CHECK(priority==0x61 || priority==0x33);return 1;}
+static int __stdcall fake_add_draw(void *node,int priority) {
+    uintptr_t callback=FIELD(node,8);
+    if(callback==(uintptr_t)draw_dialogue_hud)CHECK(priority==0x42);
+    else if(callback==(uintptr_t)draw_late_hud)CHECK(priority==0x61);
+    else CHECK(priority==0x33);
+    return 1;
+}
 static int TC fake_player_tick(void *player) {(void)player;return 1;}
 static int TC fake_bomb_tick(void *bomb) {
     unsigned id=bomb==guest_bomb;
@@ -1149,7 +1188,7 @@ int main(int argc,char **argv) {
     test_native_spirit_and_stage_clear();test_independent_loadout_creation();test_pending_stage_assets();test_native_sequential_selection();test_exit_null_close();test_local_profile_guard();
     test_personal_view_and_boss_rules();test_initial_bomb_standard();test_native_active_ui_lifetime();test_no_continue();
     test_frame_input(argc>1?argv[1]:NULL);
-    test_three_player_rules();test_three_player_shop_handoff();test_native_card_draw_copy();
+    test_three_player_rules();test_three_player_shop_handoff();test_native_card_draw_copy();test_missing_equipment_options();
     test_shared_supplies(2);test_shared_supplies(3);
     test_online_gameplay_fixes();
     test_native_heap_transaction();

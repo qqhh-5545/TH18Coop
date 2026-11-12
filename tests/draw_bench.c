@@ -7,6 +7,7 @@
 static volatile uint32_t draw_sink;
 static unsigned char *bench_vm;
 int TC coop_hud(void *unused) {(void)unused;return 1;}
+void coop_hud_capture(void) {}
 void coop_menu_hud(int owner) {(void)owner;}
 static int TC bench_native(void *manager,void *vm) {
     (void)manager;draw_sink^=FIELD(vm,0x524);return 1;

@@ -111,7 +111,7 @@ static int have_run_base;
 static wchar_t settings_path[MAX_PATH];
 static int bomb_owner,creating_guest;
 static unsigned protected_bombs;
-static void *hud_node;
+static void *hud_node,*dialogue_hud_node;
 static unsigned char saved_resources[0x30];
 static uint32_t saved_funds;
 static void *saved_cards,*saved_mukade;
@@ -412,11 +412,17 @@ static int TC guest_cards_draw(void *manager) {
 }
 
 typedef struct {void *vm;uint32_t flags;} HiddenUiVm;
-typedef struct {void *vm;uint32_t x;} PortraitShift;
-static unsigned fit_dialogue_portraits(PortraitShift *saved);
 static void *stage_dialogue(void) {
     void *gui=PTR(0x4cf2e0);
     return gui?(void *)(uintptr_t)FIELD(gui,0x1b0):NULL;
+}
+static int TC draw_dialogue_hud(void *player) {
+    return stage_dialogue()?coop_hud(player):1;
+}
+static int TC draw_late_hud(void *player) {
+    int result=stage_dialogue()?1:coop_hud(player);
+    coop_hud_capture();
+    return result;
 }
 static int is_dialogue_portrait(void *vm) {
     void *dialogue=stage_dialogue();if(!dialogue)return 0;
@@ -446,7 +452,6 @@ static int __cdecl scene_draw(void) {
     LONG saved_audit_phase=rb_audit.phase;if(rb_audit.enabled)rb_audit.phase=2;
     if(rb_audit.enabled)rb_probe_begin(1,0);
     HiddenUiVm saved[64];unsigned count=0;
-    PortraitShift portraits[4];unsigned portrait_count=fit_dialogue_portraits(portraits);
     for(unsigned id=0;id<party_count();++id)draw_alpha[id]=teammate_alpha(id);
     if(ship(1) && PTR(0x51f65c))for(unsigned id=0;id<party_count();++id) {
         void *manager=ability(id);if(!manager || id==(unsigned)coop_view_player())continue;
@@ -457,7 +462,6 @@ static int __cdecl scene_draw(void) {
     int result=((int (__cdecl *)(void))scene_draw_original)();
     static unsigned draw_rng_changes;
     if(audit_rng && !U32(0x4cd894) && memcmp(draw_rng,(void *)0x4cf280,16) && draw_rng_changes++<32)log_line("DRAW_RNG_CHANGE stage=%lu step=%lu before=%08lx,%08lx,%08lx,%08lx after=%08lx,%08lx,%08lx,%08lx",(unsigned long)U32(0x4cccdc),(unsigned long)online_map->completed,(unsigned long)draw_rng[0],(unsigned long)draw_rng[1],(unsigned long)draw_rng[2],(unsigned long)draw_rng[3],(unsigned long)U32(0x4cf280),(unsigned long)U32(0x4cf284),(unsigned long)U32(0x4cf288),(unsigned long)U32(0x4cf28c));
-    while(portrait_count){--portrait_count;FIELD(portraits[portrait_count].vm,0x5f0)=portraits[portrait_count].x;}
     while(count){--count;void *vm=saved[count].vm;FIELD(vm,0x534)=(FIELD(vm,0x534)&~2u)|(saved[count].flags&2u);}
     if(rb_audit.enabled && rb_probe.serial>=100 && rb_probe.active)rb_probe_end();
     rb_audit.phase=saved_audit_phase;return result;
@@ -470,6 +474,13 @@ static unsigned teammate_alpha(unsigned id) {
     float dx=FLT(other,0x620)-FLT(own,0x620),dy=FLT(other,0x624)-FLT(own,0x624),distance=sqrtf(dx*dx+dy*dy);
     if(distance>=100)return 128;if(distance<50)distance=50;
     unsigned alpha=(unsigned)((distance-50)*(255-51)/50)+51;return alpha>128?128:alpha;
+}
+static float vm_coordinate_unit(void *vm) {
+    unsigned mode=FIELD(vm,0x538)&0x1c00000;
+    float scale=*(float *)0x56aca0;
+    if(mode==(1u<<22) || mode==0xc00000)return scale;
+    if(mode==0x800000 || mode==0x1000000)return scale*.5f;
+    return 1;
 }
 static int TC anm_draw(void *manager,void *vm) {
     uint32_t primary=0,secondary=0;int tinted=0;
@@ -514,47 +525,8 @@ static void card_vm_units(void *vm,float *sx,float *sy) {
     *sx=FLT(vm,0x54)*FLT(vm,0x5c);*sy=FLT(vm,0x58)*FLT(vm,0x60);
     void *parent=(void *)(uintptr_t)FIELD(vm,0x5c0);
     if(parent && !(FIELD(vm,0x538)&0x40000)){*sx*=FLT(parent,0x54)*FLT(parent,0x5c);*sy*=FLT(parent,0x58)*FLT(parent,0x60);}
-    unsigned coordinate=FIELD(vm,0x538)&0x1c00000;float scale=*(float *)0x56aca0;
-    float unit=(coordinate==(1u<<22) || coordinate==0xc00000)?scale:(coordinate==0x800000 || coordinate==0x1000000)?scale*.5f:1;
+    float unit=vm_coordinate_unit(vm);
     *sx*=unit;*sy*=unit;
-}
-static unsigned fit_dialogue_portraits(PortraitShift *saved) {
-    void *dialogue=stage_dialogue(),*manager=PTR(0x51f65c);
-    if(!ship(1) || !dialogue || !manager)return 0;
-    void *roots[4]={0};float right=-INFINITY,left=INFINITY;
-    for(unsigned slot=0;slot<4;++slot) {
-        uint32_t id=FIELD(dialogue,0x50+slot*4);
-        if(!id)continue;
-        roots[slot]=((void *(TC *)(void *,uint32_t))0x488b40)(manager,id);
-        if(!roots[slot])continue;
-        CardVmRef refs[24];unsigned count=0;collect_card_tree(roots[slot],refs,&count,0);
-        for(unsigned n=0;n<count;++n) {
-            void *vm=refs[n].vm;uint32_t flags=FIELD(vm,0x534);
-            /* Original portrait children have top/left anchors. Respect
-               replacement ANM anchors instead of assuming centered cards. */
-            if((flags&3)!=3 || !(FIELD(vm,0x524)>>24) || FIELD(vm,0x538)&0x180)continue;
-            float sx,sy,at[3];card_vm_units(vm,&sx,&sy);
-            float w=fabsf(FLT(vm,0x74)*sx),h=fabsf(FLT(vm,0x78)*sy);
-            if(w<=0 || h<=0 || !isfinite(w) || !isfinite(h))continue;
-            ((float *(TC *)(void *,float *))0x4065a0)(vm,at);
-            unsigned anchor=(flags>>22)&3;
-            float lo=at[0]-(anchor==1?0:anchor==2?w:w*.5f),hi=lo+w;
-            if(lo<left)left=lo;if(hi>right)right=hi;
-        }
-    }
-    float scale=*(float *)0x56aca0,limit=414*scale;
-    if(!isfinite(right) || right<=limit || scale<=0)return 0;
-    float shift=limit-right;
-    if(left+shift<32*scale)shift=32*scale-left;
-    if(shift>=0)return 0;
-    unsigned count=0;
-    for(unsigned n=0;n<4;++n)if(roots[n]) {
-        void *root=roots[n];unsigned coordinate=FIELD(root,0x538)&0x1c00000;
-        float unit=(coordinate==0x400000 || coordinate==0xc00000)?scale:(coordinate==0x800000 || coordinate==0x1000000)?scale*.5f:1;
-        saved[count++]=(PortraitShift){root,FIELD(root,0x5f0)};
-        FLT(root,0x5f0)+=shift/unit;
-    }
-    return count;
 }
 unsigned coop_hud_card_quads(const HudCard *card,float x,float y,float width,float height,HudNativeQuad *out,unsigned capacity) {
     void *manager=PTR(0x51f65c);if(!manager || !card->native_ui || !capacity)return 0;
@@ -1132,10 +1104,20 @@ static void create_guest(void) {
     }
     typedef void *(__stdcall *NewNode)(void *);
     typedef int (__stdcall *AddDraw)(void *,int);
-    if(!hud_node) {hud_node=((NewNode)0x401530)(coop_hud);
-    FIELD(hud_node,0x24)=(uint32_t)(uintptr_t)p1;
-    ((AddDraw)0x401230)(hud_node,0x61);
-    FIELD(hud_node,4)|=2;}
+    if(!hud_node) {
+        hud_node=((NewNode)0x401530)(draw_late_hud);
+        FIELD(hud_node,0x24)=(uint32_t)(uintptr_t)p1;
+        ((AddDraw)0x401230)(hud_node,0x61);
+        FIELD(hud_node,4)|=2;
+    }
+    if(!dialogue_hud_node) {
+        dialogue_hud_node=((NewNode)0x401530)(draw_dialogue_hud);
+        FIELD(dialogue_hud_node,0x24)=(uint32_t)(uintptr_t)p1;
+        /* New nodes precede equal priorities. The native ANM pass at 0x42
+           draws dialogue portraits, including their inactive layer. */
+        ((AddDraw)0x401230)(dialogue_hud_node,0x42);
+        FIELD(dialogue_hud_node,4)|=2;
+    }
     PTR(0x4cf410)=p1; PTR(0x570920)=cached_shot;
     memcpy((void *)0x4ccd38,saved,sizeof(saved));
     previous_p2=0;
@@ -1200,6 +1182,40 @@ static void set_position(void *player,float x,float y) {
     FLT(player,0x620)=x;FLT(player,0x624)=y;
     FIELD(player,0x62c)=(int)(x*128);FIELD(player,0x630)=(int)(y*128);
 }
+static void refresh_player_options(void *player) {
+    /* Native power/option rebuild takes the position subobject as this and
+       reads the current seat's power, character and ability manager. */
+    ((void (TC *)(void *,void *))0x45d5e0)(OFF(player,0x620),player);
+}
+static void ensure_equipment_options(void *player) {
+    void *cards=PTR(0x4cf298),*anm=PTR(0x51f65c);
+    if(!cards || !anm || PTR(0x4cf2a4) || FIELD(player,0x476ac)!=1 ||
+       (FIELD(player,0x4779c)&0x182))return;
+    unsigned missing=0,available=0;
+    void *node=(void *)(uintptr_t)FIELD(cards,0x1c);
+    for(unsigned n=0;node && n<256;++n) {
+        void *card=(void *)(uintptr_t)FIELD(node,0);
+        node=(void *)(uintptr_t)FIELD(node,4);
+        if(!card)continue;
+        uint32_t id=FIELD(card,4);
+        if(id!=19 && id!=51)continue; /* Back Door and Ancient Magatama */
+        unsigned count=id==51?2:1;
+        for(unsigned i=0;i<count;++i) {
+            void *option=(void *)(uintptr_t)FIELD(card,0x54+i*4);
+            uintptr_t offset=(uintptr_t)option-(uintptr_t)OFF(player,0xa30);
+            if(offset>=12*0xf0 || offset%0xf0 || FIELD(option,0)!=2 ||
+               FIELD(option,0xd0)!=FIELD(card,8)) {++missing;continue;}
+            uint32_t vm=FIELD(option,0xb0);
+            if(!vm || !((void *(TC *)(void *,uint32_t))0x488b40)(anm,vm)) {++missing;++available;}
+        }
+    }
+    /* Acquisition can precede the native option rebuild. Restore missing
+       attachments on the owning seat's tick, retaining native shot/collision
+       callbacks and animations. A full pool is left to native capacity rules. */
+    if(!missing)return;
+    for(unsigned i=0;i<12;++i)if(!FIELD(player,0xa30+i*0xf0))++available;
+    if(missing<=available && !rb_request_precise())refresh_player_options(player);
+}
 static void prepare_player_tick(unsigned id) {
     void *player=ship(id);
     /* The solo death path eventually cleans this detached focus VM. Spirits
@@ -1229,6 +1245,7 @@ static void prepare_player_tick(unsigned id) {
     } else if(FIELD(player,0x476ac)!=4 && partner[id].deathbomb_extended) {
         FIELD(player,0x47908)=partner[id].deathbomb_base;partner[id].deathbomb_extended=0;
     }
+    if(!partner[id].ghost)ensure_equipment_options(player);
 }
 static int item_index(void *manager,void *item) {
     intptr_t offset=(unsigned char *)item-OFF(manager,0x14);
@@ -1285,9 +1302,11 @@ static void revive(unsigned id) {
     void *player=ship(id);float x=FLT(player,0x620),y=FLT(player,0x624);
     if(id) enter_p2(0);
     U32(0x4ccd48)=0;U32(0x4ccd58)=U32(0x4ccd60)>0?U32(0x4ccd60):2;U32(0x4ccd5c)=0;
-    /* Native reset rebuilds options using this player's own cards. */
-    ((void (__cdecl *)(void))0x45abb0)();
+    /* The native reset derives options and the position trail immediately.
+       Give it the restored power and rescue position before it runs. */
     U32(0x4ccd38)=U32(0x4ccd3c)/2;
+    set_position(player,x,y);
+    ((void (__cdecl *)(void))0x45abb0)();
     FIELD(player,0x47778)=240;FLT(player,0x4777c)=240;FIELD(player,0x47774)=239;
     set_position(player,x,y);
     if(id) leave_p2(0);guest_slot=old;
@@ -1516,6 +1535,7 @@ static void *TC destroy_stage_player(void *player,int unused) {
         departed_stage=observed_stage?observed_stage:U32(0x4cccdc);departed_ghosts=0;
         if(U32(0x4cccc8)&1)for(unsigned id=0;id<party_count();++id)if(ship(id) && (partner[id].ghost || *resource(id,0x10)<0))departed_ghosts|=1u<<id;
         if(hud_node){((void (TC *)(void *,void *))0x4015a0)(PTR(0x4cf294),hud_node);hud_node=NULL;}
+        if(dialogue_hud_node){((void (TC *)(void *,void *))0x4015a0)(PTR(0x4cf294),dialogue_hud_node);dialogue_hud_node=NULL;}
         for(unsigned id=1;id<party_count();++id) {
             guest_slot=id-1;
             if(current_guest) {

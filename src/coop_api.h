@@ -49,6 +49,7 @@ unsigned coop_hud_card_quads(const HudCard *card,float x,float y,float width,flo
 void coop_hud_card_flush(void);
 
 int coop_hud_capture_path(wchar_t *path,unsigned length);
+void coop_hud_capture(void);
 
 #endif
 
