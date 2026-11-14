@@ -14,3 +14,9 @@
 *.rpy
 *.th18input
 __pycache__/
+
+/multigame/release/
+/multigame/dist/
+/multigame/tests/bin/
+/multigame/.zig-cache/
+/multigame/tools/python/

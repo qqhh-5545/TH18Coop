@@ -1,0 +1,18 @@
+{
+  "version": "1.0.5",
+  "th14_runtime": "0.2.8-transfer",
+  "runtime_sha256": {
+    "TouhouCoop.exe": "95c951d9231667791ff09101617d86db2bb302266c5732c1d3f920ca5c5cd9cb",
+    "TH14Coop.Console.exe": "2a81c2200d0c572069b46041753c5e4c6ec951d6ad4e03f91090cbd18b89c7ed",
+    "th14_coop.dll": "56c44b48ea76d2311a5ab5aaf2d1860b1ff912bec24feec2ab7f66bcedeac62f",
+    "TH18LocalCoop.Console.exe": "e735e46c07df4d72a59b8e3565ccbf84f39ef01729953f3eb95ed282c2eb26cd",
+    "th18_coop.dll": "4b910582a7b7baa9fd299d056289a2954fb50cf6a4fc402ffc40b0f36e12e680",
+    "coop.ini": "7514a6bb0856a66e663836a79f27315be941d6f8c29b5934325dd1496c07b285"
+  },
+  "qualification": {
+    "th14": "Unchanged 0.2.8 native DLL; local two-player rules, demo, counters and same-machine three-player TCP verified.",
+    "launcher": "1.0.5 version and TH14 network identity; profile isolation, game switching, 119 reconnect assertions and 35 network checks passed.",
+    "limits": "TH14 multiplayer replay, full combination coverage, long remote sessions and frame-time diagnosis remain incomplete.",
+    "source_build": "Public multigame build passed using the pinned TH18 runtime; profile, HUD (184149 assertions), progressive completion (23 assertions), scale and BGM checks passed."
+  }
+}

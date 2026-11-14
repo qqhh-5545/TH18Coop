@@ -1,0 +1,102 @@
+{
+  "commit": "b2935c8e2f13016b92058fd17ea36a644f013f30",
+  "release": "https://github.com/qqhh-5545/TH18MultiplayerMod/releases/tag/v1.0.4",
+  "asset_sha256": "620929b5f5fee86bea02bdbc976123ad8b257937c04da3869e11d22ad5dd8377",
+  "namespace_only": true,
+  "managed_files": [
+    {
+      "file": "CoopData.cs",
+      "original_sha256": "5d014dd9cedfe4a978a73fd3d9df34a9787733ca9e402c8c2a4a8f73d63258a3",
+      "adapted_sha256": "5661103e14d0944a415f2b59a16027164a75d04aa32860201c1121e6947cb367"
+    },
+    {
+      "file": "HelpForm.cs",
+      "original_sha256": "a4370507e528864a873d7c1b97fc2b037d3b5a539acd646fe12bb16af54ac3c4",
+      "adapted_sha256": "6167bf3f3cc4bdb8dd0ba1cbb9ff327afd704dba006b23e1c5a79acc060bf857"
+    },
+    {
+      "file": "InputTape.cs",
+      "original_sha256": "5a79d22d1c695f878c596118cb9a4e94325d7095a84a8756d633fd6ee2ee18fc",
+      "adapted_sha256": "34e015b4fb177577341ca4516da01b11175e64578d72bf2086cb5581531993ef"
+    },
+    {
+      "file": "KeyBindingsForm.cs",
+      "original_sha256": "921d3f91776df9d70d7f0a2b2331dd9310c8c9ad028187807d95c5dc15fcd9f6",
+      "adapted_sha256": "ab3d2aaf7d4cc7f7974e2072eb9ace71c0712ac2c5aee2eb3e7b265dac4001f5"
+    },
+    {
+      "file": "Launcher.cs",
+      "original_sha256": "ea3ab22fa90cdc10a21e9ff2362961bd61cf5c2934ba9ddeff4aedd89394e130",
+      "adapted_sha256": "60d17fd38a67bdd02b56a29a824ecce033caca2693bcdb3f77ccdc967ca60dcb"
+    },
+    {
+      "file": "LocalDuo.cs",
+      "original_sha256": "af01879ee3bbcddde3ae6ffd3fba490fc20626b7fc7da23802d93e1a9341db80",
+      "adapted_sha256": "e23345df7493bfd744dc5028a890813f6fbb090aaf4d4f5c979c8e57096d1f50"
+    },
+    {
+      "file": "NetSession.cs",
+      "original_sha256": "4fac7afd85809075e33e6c145ee34e145e078e174eed7612dd0946be39286aa1",
+      "adapted_sha256": "3b331d4dc6f3c852a0fc858cde3ee8f8b582e9ba8079863a374d6e07dfaa8ae8"
+    },
+    {
+      "file": "NetworkForm.cs",
+      "original_sha256": "ee9884df280aa19c420a382baad0edc9afe67c14cacc90d98005d477fd67781a",
+      "adapted_sha256": "ec63cdfa5ffbef9d18af6e67b1ec638b4967c3de760bd36a0e3a2206c9f21e3f"
+    },
+    {
+      "file": "NetworkLog.cs",
+      "original_sha256": "da007282e1fc4da611d4ebf8d1b97f12ed27110960a69a1a836dc3f2f3d92398",
+      "adapted_sha256": "bbeb44138974cfe6cb732a0935dd0d235aff5e2a41c2f0ddb620d0e835e2af58"
+    },
+    {
+      "file": "OnlineBridge.cs",
+      "original_sha256": "a4ca1744063a9e484f55eb1d22b0dc8749482af0150cac0249a131847be5f9bb",
+      "adapted_sha256": "894da56fdf325b2ba1ba5ba68740e4f4d048aae0c0f9cd9ed15f3054c5a4514d"
+    },
+    {
+      "file": "OnlineGame.cs",
+      "original_sha256": "bdb7659843b1c43bbe9e0bc6e4c1e9e447bd2e3d55cd8a8e5bed12b7584a6b7a",
+      "adapted_sha256": "acc02a96d0c0b75634f50d1132c366e56709616295073e7f3f27bfef265f9918"
+    },
+    {
+      "file": "OnlineProfile.cs",
+      "original_sha256": "5265ed753ff9d42480b2e3b5d2e5a7851c1022eac56530dc9273717d4374cdcd",
+      "adapted_sha256": "5c3e305457f4072124b026ec24f1206f48c13bb30647229f6b2fbd769d5bb1c5"
+    },
+    {
+      "file": "OnlineSession.cs",
+      "original_sha256": "8b8665407125d7a2c75b8fbb1a0e6d21f81811d60ed3491f03a8baab9af6bdb3",
+      "adapted_sha256": "02b6b7ab2721c3130ab15b3d147d38d51611eaa8d297a7357e5a0c7d96320a28"
+    },
+    {
+      "file": "ReconnectStream.cs",
+      "original_sha256": "ec3c3bebda25f231a561a750c748d1bb5f3c71242c1109f09b4490b80b698029",
+      "adapted_sha256": "824f62a6ad47dcad748c3986680dfb9ee5e06bf4e954157f71530969caaa7463"
+    },
+    {
+      "file": "ReplayViewer.cs",
+      "original_sha256": "82ea20f8df90cd72eaecfc76d492b69e03c1e5ed01e6d52c41dea2e6f3145456",
+      "adapted_sha256": "68232b04c35a030e3c4499fe7b4d4b08f326f1dd87268e5ea5a6815ccd7720e0"
+    },
+    {
+      "file": "RollbackTimeline.cs",
+      "original_sha256": "9519c5977e8d18edfaed55941bd32fec3b54c828917acb297785a4047ca70fe1",
+      "adapted_sha256": "af4cd63530e9f761c9c56762799cac6aaa4d6e705f7df34feacc2a1ae0dc45c4"
+    },
+    {
+      "file": "RollbackTransport.cs",
+      "original_sha256": "0575882ff1bf62f300cd385aab72d1c5f100776eae71f6a88c66b99de0804571",
+      "adapted_sha256": "f3723dd3132a251ab334d02eb5262ef8f152e069fc83fe4955a2cc0a134985c6"
+    },
+    {
+      "file": "ThcrapForm.cs",
+      "original_sha256": "f2e8ec2c1cb92c2a250a1881bf1ebb28289479a91a3b04c1e99fd8df4de28cdf",
+      "adapted_sha256": "bd3084382a793ce34c61d757945fab7a9b5cf88e6a3b70c2b397f3aa47202990"
+    }
+  ],
+  "runtime": {
+    "th18_coop.dll": "4b910582a7b7baa9fd299d056289a2954fb50cf6a4fc402ffc40b0f36e12e680",
+    "TH18LocalCoop.Console.exe": "e735e46c07df4d72a59b8e3565ccbf84f39ef01729953f3eb95ed282c2eb26cd"
+  }
+}

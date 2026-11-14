@@ -1,4 +1,6 @@
-# TH18Coop
+# Touhou Co-op
+
+Version 1.0.5 adds TH14 local two-player and online two/three-player co-op alongside TH18. Run `TouhouCoop.exe` and select your game. TH14 supports Chinese launchers and thcrap. See [TH14 controls and rules](docs/TH14.md) and the [multi-game source and build instructions](multigame/README.md). The following sections describe TH18.
 
 [简体中文](README.md)
 
